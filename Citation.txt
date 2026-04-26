@@ -1,0 +1,11 @@
+Note: Using the xml format for the franka_fr3 robotic arm, provided by Google DeepMind - Mujoco Menagerie
+
+cff version 1.2.0
+authors:
+  - family-names: Zakka
+    given-names: Kevin
+  - family-names: Tassa
+    given-names: Yuval
+  - name: "MuJoCo Menagerie Contributors"
+title: "MuJoCo Menagerie: A collection of high-quality simulation models for MuJoCo"
+date-released: 2022-09-07
