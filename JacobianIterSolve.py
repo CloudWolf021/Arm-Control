@@ -4,6 +4,7 @@ import math
 
 
 import Vars
+import MatrixHelper
 
 # Use the Jacobian and its transpose for the inverse kinematics
 def GetRawJointPositionListJacobianT(data, model, x, y, z):
@@ -50,7 +51,7 @@ def GetRawJointPositionListJacobianT(data, model, x, y, z):
     # @@@@@@@@@@@@@@@@@@@@ 
     jacNeeded = np.zeros((3, Vars.DOF))
     jacOther = np.zeros((3, Vars.DOF))
-    jac = mujoco.mj_jacSite(model, data, jacNeeded, jacOther, 0)
+    mujoco.mj_jacSite(model, data, jacNeeded, jacOther, 0)
     # After extracting jacobian, transpose
     trans = np.transpose(jacNeeded)
 
@@ -62,9 +63,9 @@ def GetRawJointPositionListJacobianT(data, model, x, y, z):
 
 # ###########################################################################################
 
-# Use the Jacobian and its pseudo-inverse for the inverse kinematics
+# Use the Jacobian and its pseudoinverse for the inverse kinematics
 
-def GetRawJointPositionListJacobianPinv(data, model, x, y, z):
+def GetRawJointPositionListJacobianPInv(data, model, x, y, z):
     initX = data.site_xpos[0][0]
     initY = data.site_xpos[0][1]
     initZ = data.site_xpos[0][2]
@@ -74,15 +75,41 @@ def GetRawJointPositionListJacobianPinv(data, model, x, y, z):
     dz = z-initZ
 
     sq = dx**2+dy**2+dz**2
-    param = 0.75   # @@@@@@@@@@@@@@@@@@@@@
+    Vars.SSQ_ERROR = sq
+    param = 1  
 
-    # @@@@@@@@@@@@@@@@@@@@@@@@
     jacNeeded = np.zeros((3, Vars.DOF))
     jacOther = np.zeros((3, Vars.DOF))
-    jac = mujoco.mj_jacSite(model, data, jacNeeded, jacOther, 0)
+    mujoco.mj_jacSite(model, data, jacNeeded, jacOther, 0)
     #trans = np.transpose(jacNeeded)
     ps = np.linalg.pinv(jacNeeded)
     
     res = param*(ps @ np.array([dx, dy, dz]))
     return [data.qpos[0]+res[0], data.qpos[1]+res[1], data.qpos[2]+res[2], data.qpos[3]+res[3], data.qpos[4]+res[4], data.qpos[5]+res[5], data.qpos[6]+res[6]]
     
+# ###########################################################################################
+
+# Use the Jacobian and a safe pseudoinverse for the inverse kinematics
+
+def GetRawJointPositionListJacobianPInvSpecial(data, model, x, y, z):
+    initX = data.site_xpos[0][0]
+    initY = data.site_xpos[0][1]
+    initZ = data.site_xpos[0][2]
+
+    dx = x-initX
+    dy = y-initY
+    dz = z-initZ
+
+    sq = dx**2+dy**2+dz**2
+    Vars.SSQ_ERROR = sq
+    param = 0.96  
+
+    jacNeeded = np.zeros((3, Vars.DOF))
+    jacOther = np.zeros((3, Vars.DOF))
+    mujoco.mj_jacSite(model, data, jacNeeded, jacOther, 0)
+    #trans = np.transpose(jacNeeded)
+    ps = MatrixHelper.GetAdjustedPInv(jacNeeded)
+    
+    res = param*(ps @ np.array([dx, dy, dz]))
+    return [data.qpos[0]+res[0], data.qpos[1]+res[1], data.qpos[2]+res[2], data.qpos[3]+res[3], data.qpos[4]+res[4], data.qpos[5]+res[5], data.qpos[6]+res[6]]
+  

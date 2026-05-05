@@ -10,7 +10,6 @@ import Vars
 import Model
 import JacobianIterSolve
 import JacobianGradSolve
-import SpecialControl
 
 # Helper source https://mujoco.readthedocs.io/en/stable/python.html
 
@@ -93,11 +92,15 @@ def ControlRoutine(controlType, verbose = False, delta = 0.0008):
 
     with mujoco.viewer.launch_passive(model, data) as viewer:
         while iter < Vars.NUM_ITERS_REG:
-            if iter == 0 or Helpers.HaveReachedTarget(data, xN, yN, zN, delta) or Vars.CUR_FAIL_ITERS == Vars.NUM_ITERS_FAIL: 
+            if (iter == 0 or Helpers.HaveReachedTarget(data, xN, yN, zN, delta) or 
+               Vars.CUR_FAIL_ITERS == Vars.NUM_ITERS_FAIL or 
+               (iter - curStartIter) == Vars.TIMEOUT_ITERS): 
                 # prompt input
                 if (iter > 0):
                     print(f"The number of iterations is {iter - curStartIter} and error is {Vars.SSQ_ERROR}")
                     curStartIter = 0
+                if ((iter - curStartIter) == Vars.TIMEOUT_ITERS):
+                    print("Iteration limit exceeded. Position may also be unreachable.")
                 if (Vars.CUR_FAIL_ITERS == Vars.NUM_ITERS_FAIL):
                     Vars.CUR_FAIL_ITERS = 0
                     print("The position is not reachable.")
@@ -108,18 +111,24 @@ def ControlRoutine(controlType, verbose = False, delta = 0.0008):
                 yN = eval(input())
                 print("\nZ = ", end = "")
                 zN = eval(input())
+                curStartIter = iter
 
             iter+=1
+            # For the first step, will have 1 iteration, which is correct
             mujoco.mj_step1(model, data)
 
+            # Call the appropriate method depending on what control type is desired. 
             if (controlType == Vars.JT):
                 Helpers.MoveToJointPositionsRaw(data, JacobianIterSolve.GetRawJointPositionListJacobianT(data, model, xN, yN, zN), False)
             if (controlType == Vars.JPINV):
-                Helpers.MoveToJointPositionsRaw(data, JacobianIterSolve.GetRawJointPositionListJacobianSolvePInv(data, model, xN, yN, zN), False)
+                Helpers.MoveToJointPositionsRaw(data, JacobianIterSolve.GetRawJointPositionListJacobianPInv(data, model, xN, yN, zN), False)
             if (controlType == Vars.JSOLVE):
                 Helpers.MoveToJointPositionsRaw(data, JacobianGradSolve.GetRawJointPositionListJacobianSolve(data, model, xN, yN, zN), False)
             elif (controlType == Vars.MODEL):
                 Helpers.MoveToJointPositionsRaw(data, Model.GetRawJointPositionListModel(data, model, xN, yN, zN), False)
+            elif (controlType == Vars.JPINVS):
+                Helpers.MoveToJointPositionsRaw(data, JacobianIterSolve.GetRawJointPositionListJacobianPInvSpecial(data, model, xN, yN, zN), False)
+
             if verbose: print(f"x: {data.site_xpos[0][0]} / wanted {xN}, y: {data.site_xpos[0][1]} / wanted {yN}, z: {data.site_xpos[0][2]} / wanted {zN}")
             
             mujoco.mj_step2(model, data)
@@ -140,7 +149,15 @@ def main ():
         print("Invalid. Terminating.")
         return
     if (choice == "1"):
-        ControlRoutine(Vars.JT, False, 0.00008)
+        print("Please enter a solving method:\n1. Solve with transpose\n2. Solve with raw psuedoinverse\n3. Solve with corrected pseudoinverse\n4. Solve with gradient descent\n5. Solve with model (not recommended)\n")
+        solverChoice = input()
+        firstChar = solverChoice[0]
+        charASCII = ord(firstChar)
+        if (charASCII >= Vars.ASCII_1 and charASCII <= Vars.ASCII_5):
+            # Exploit sequential order of options
+            ControlRoutine(charASCII - Vars.ASCII_1 + 1, False, 0.00008)   
+            return
+        print("Invalid. Terminating.")
         return
     else:   # collect data
         CollectDataRoutine()

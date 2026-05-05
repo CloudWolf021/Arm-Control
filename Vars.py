@@ -10,10 +10,11 @@ J6_COEFF = [-0.7938367508375074, -0.5208225493558957, -1.05198114362534, 2.87062
 J7_COEFF = [2.0157677154681846, -0.43709335271725364, -2.015475928600283, 1.0147229521093233]
 
 # Effective enumeration for the type of control used; used to prevent duplication
-JT = 0
-JPINV = 1
-JSOLVE = 2
-MODEL = 3
+JT = 1
+JPINV = 2
+JPINVS = 3
+JSOLVE = 4
+MODEL = 5
 
 # How many iterations the simulation will run for unless if it is terminated early
 NUM_ITERS_COLLECT = 2400
@@ -24,12 +25,16 @@ NUM_ITERS_REG = 10800
 # Important to have a high number to prevent false detections of unreachable points
 NUM_ITERS_FAIL = 200
 
+# The maximum legal iterations for a single call for the arm to move
+TIMEOUT_ITERS = 2000
+
 # Threshold at which end effector position is considered to not have decreased sufficiently across
 # 2 successive simulation iterations
 IMPROVEMENT_FAIL_THRESHOLD = 0.000005
 
 EXPECTED_JOINT_NAME_LEN = 9
 ASCII_1 = 49
+ASCII_5 = 53
 ASCII_7 = 55
 
 DOF = 7
