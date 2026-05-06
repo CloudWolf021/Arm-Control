@@ -1,10 +1,7 @@
 <mujoco model="fr3 scene">
   <include file="arms.xml"/>
 
-  /// <summary>
-  /// This include deviates from scene.xml, which is cited as part of Citation.txt. The rest of the file is identical. 
-  /// </summary>
-
+  <!-- This include deviates from scene.xml, which is cited as part of Citation.txt. The rest of the file is identical. -->
   <statistic center="0.2 0 0.4" extent=".8"/>
 
   <visual>

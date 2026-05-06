@@ -1,9 +1,7 @@
-/// <summary>
-/// Deviations in this file from fr3.xml, which is cited in Citation.txt, are noted below in summary blocks.  
-/// </summary>
-
 <mujoco model="fr3">
   <compiler angle="radian" meshdir="assets"/>
+
+  <!-- Deviations in this file from fr3.xml, which is cited in Citation.txt, are noted below in summary blocks.  -->
 
   <option integrator="implicitfast"/>
 
@@ -151,10 +149,11 @@
       </body>
     </body>
 
-    /// <summary>
-    /// This is a nearly identical clone to the original arm included in fr3.xml. The only modifications are changing the 
-    /// item identifiers to be distinct and setting the position of the base to be (0, 1.5, 0). 
-    /// </summary>
+    <!-- This is a nearly identical clone to the original arm included in fr3.xml. 
+        The only modifications are changing the item identifiers to be distinct and 
+        setting the position of the base to be (0, 1.5, 0). 
+    -->
+
     <body name="base2" childclass="fr3">
       <body name="fr3_link02" pos="0 1.5 0">
         <geom mesh="link0_0" material="black" class="visual"/>
@@ -235,9 +234,7 @@
       </body>
     </body>
 
-     /// <summary>
-     /// This sphere addition is an addition to the original fr3.xml file. See Citation2.txt for more information. 
-     /// </summary>
+     <!-- This sphere addition is an addition to the original fr3.xml file. See Citation2.txt for more information.  -->
      <body name = "sphere">
             <geom type="sphere" contype = "1" conaffinity = "1" rgba="0 0 1 1" size = "0.17" pos = "0 0.8 0.17" friction = "3.5 0 0" mass = "10"/>
             <joint type = "free"  name = "sphere_joint" stiffness="1" damping="1" frictionloss="0.2" armature="0"/>
@@ -245,10 +242,8 @@
      </body>
   </worldbody>
 
-
-  /// <summary>
-  /// As a deviation (as legal) from the initial cited file, additional actuators have been added for the second arm, and for the sphere. 
-  /// </summary>
+  <!-- As a deviation (as legal) from the initial cited file, additional actuators have been added for the second arm, and for the sphere. -->
+  
   <actuator>
     <position class="fr3" name="fr3_joint1" joint="fr3_joint1" kp="4500" kv="450"/>
     <position class="fr3" name="fr3_joint2" joint="fr3_joint2" kp="4500" kv="450"/>
@@ -268,9 +263,8 @@
   </actuator>
 
 
-  /// <summary>
-  /// An additional mirrored contact exclusion has been added for the second arm, which is a deviation from the initial file. 
-  /// </summary>
+  <!-- An additional mirrored contact exclusion has been added for the second arm, which is a deviation from the initial file. -->
+  
   <contact>
     <exclude body1="fr3_link0" body2="fr3_link1"/>
     <exclude body1="fr3_link02" body2="fr3_link12"/>
@@ -278,9 +272,10 @@
 
 
 
-  /// <summary>
-  /// The initial qpos and ctrl have been modified to account for the second arm, and no defaults are included here for the free joint corresponding to the sphere. 
-  /// </summary>
+  <!-- The initial qpos and ctrl have been modified to account for the second arm, 
+       and no defaults are included here for the free joint corresponding to the sphere. 
+  -->
+
   <keyframe>
     <key name="home" qpos="0 0 0 -1.57079 0 1.57079 -0.7853 0 0 0 -1.57079 0 1.57079 -0.7853" ctrl="0 0 0 -1.57079 0 1.57079 -0.7853 0 0 0 -1.57079 0 1.57079 -0.7853"/>
   </keyframe>
