@@ -2,8 +2,9 @@ import mujoco
 import numpy as np
 import math
 
-
 import Vars
+
+# Use gradient descent to step the current desired position
 
 def GetRowOut(index, jacobian, curVals):
     sum = 0
@@ -13,9 +14,12 @@ def GetRowOut(index, jacobian, curVals):
 
 def GetSingleSolutionJacobian(jacobian, desiredXYZ, init = [0, 0, 0, 0, 0, 0, 0]):
     # Solve jacobian * joint_pos_delta_needed = desiredXYZChange using least-squares and gradient descent
-    cur = [init[0], init[1], init[2], init[3], init[4], init[5], init[6]]
-    learningRate = 0.04
-    numSteps = 200
+    # By using a default of all zeroes, we effectively resume from the previous location with zero change
+    # in joint positions
+    # Reference on list comprehension syntax: https://www.w3schools.com/python/python_lists_comprehension.asp
+    cur = [init[i] for i in range(Vars.DOF)]
+    learningRate = 0.89
+    numSteps = 60
     for i in range(numSteps):
         ffX = GetRowOut(0, jacobian, cur)
         ffY = GetRowOut(1, jacobian, cur)
@@ -31,11 +35,16 @@ def GetSingleSolutionJacobian(jacobian, desiredXYZ, init = [0, 0, 0, 0, 0, 0, 0]
             cur[j] -= totalGrad*learningRate
     return np.array(cur)
 
-def GetRawJointPositionListJacobianSolve(data, model, x, y, z):
+def GetRawJointPositionListJacobianSolve(data, model, x, y, z, jacobian, isFirstArm):
     prevSq = Vars.SSQ_ERROR
-    initX = data.site_xpos[0][0]
-    initY = data.site_xpos[0][1]
-    initZ = data.site_xpos[0][2]
+
+    index = 0
+    if not(isFirstArm):
+        # First arm
+        index = 1
+    initX = data.site_xpos[index][0]
+    initY = data.site_xpos[index][1]
+    initZ = data.site_xpos[index][2]
 
     dx = x-initX
     dy = y-initY
@@ -72,15 +81,13 @@ def GetRawJointPositionListJacobianSolve(data, model, x, y, z):
 
     param = 1
 
-    # @@@@@@@@@@@@@@@@@@@@ 
-    jacNeeded = np.zeros((3, Vars.DOF))
-    jacOther = np.zeros((3, Vars.DOF))
-    jac = mujoco.mj_jacSite(model, data, jacNeeded, jacOther, 0)
-    # After extracting jacobian, transpose
-    #trans = np.transpose(jacNeeded)
-
     # Get delta update
     #res = param*(trans @ np.array([dx, dy, dz]))
-    res = param*GetSingleSolutionJacobian(jacNeeded, np.array([dx, dy, dz]))
+    res = param*GetSingleSolutionJacobian(jacobian, np.array([dx, dy, dz]))
+
+    offset = 0
+    if not(isFirstArm):
+        # Correctly index into qpos
+        offset = Vars.DOF
     
-    return [data.qpos[0]+res[0], data.qpos[1]+res[1], data.qpos[2]+res[2], data.qpos[3]+res[3], data.qpos[4]+res[4], data.qpos[5]+res[5], data.qpos[6]+res[6]]
+    return [data.qpos[offset]+res[0], data.qpos[offset+1]+res[1], data.qpos[offset+2]+res[2], data.qpos[offset+3]+res[3], data.qpos[offset+4]+res[4], data.qpos[offset+5]+res[5], data.qpos[offset+6]+res[6]]

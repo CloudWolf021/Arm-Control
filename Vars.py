@@ -1,4 +1,5 @@
 ARM_PATH = "Arm/franka_fr3/scene.xml"
+DUAL_ARM_PATH = "Arm/franka_fr3/armsScene.xml"
 
 # Coefficients a, b, c, and d for mapping x, y, z points into joint positions
 J1_COEFF = [-0.6082788138793246, -0.1436887525703529, -0.5991220013395426, 0.384121173975713]
@@ -26,7 +27,9 @@ NUM_ITERS_REG = 10800
 NUM_ITERS_FAIL = 200
 
 # The maximum legal iterations for a single call for the arm to move
-TIMEOUT_ITERS = 2000
+TIMEOUT_ITERS = 700
+
+EXTRA_WAIT_ITERS = 10
 
 # Threshold at which end effector position is considered to not have decreased sufficiently across
 # 2 successive simulation iterations
@@ -38,10 +41,22 @@ ASCII_5 = 53
 ASCII_7 = 55
 
 DOF = 7
+ADJ_DOF = 20
 # Ordered limits extracted from the xml format: https://github.com/google-deepmind/mujoco_menagerie/blob/main/franka_fr3/fr3.xml
 # Citation outside of document
 JOINT_MIN_LIMITS = [-2.7437, -1.7837, -2.9007, -3.0421, -2.8065, 0.5445, -3.0159]
 JOINT_MAX_LIMITS = [2.7437, 1.7837, 2.9007, -0.1518, 2.8065, 4.5169, 3.0159]
+
+# Positions for the initial movement of the first arm when a sphere is moved between the two arms
+ARM1_HOME_X = -0.04
+ARM1_HOME_Y = 0.31
+ARM1_HOME_Z = 0.14
+ARM_LOW_Z = 0.14
+
+ARM2_OFFSET = 1.5
+SPHERE_CENTER_OFFSET = 0.14
+# Tend to push the sphere closer back into the center
+SPHERE_HORIZ_OFFSET_MUL = 1.2
 
 # END Constants
 

@@ -7,12 +7,16 @@ import Vars
 import MatrixHelper
 
 # Use the Jacobian and its transpose for the inverse kinematics
-def GetRawJointPositionListJacobianT(data, model, x, y, z):
+def GetRawJointPositionListJacobianT(data, model, x, y, z, jacobian, isFirstArm):
 
     prevSq = Vars.SSQ_ERROR
-    initX = data.site_xpos[0][0]
-    initY = data.site_xpos[0][1]
-    initZ = data.site_xpos[0][2]
+    index = 0
+    if not(isFirstArm):
+        # First arm
+        index = 1
+    initX = data.site_xpos[index][0]
+    initY = data.site_xpos[index][1]
+    initZ = data.site_xpos[index][2]
 
     dx = x-initX
     dy = y-initY
@@ -47,28 +51,29 @@ def GetRawJointPositionListJacobianT(data, model, x, y, z):
     else:
        Vars.CUR_FAIL_ITERS = 0 
 
-
-    # @@@@@@@@@@@@@@@@@@@@ 
-    jacNeeded = np.zeros((3, Vars.DOF))
-    jacOther = np.zeros((3, Vars.DOF))
-    mujoco.mj_jacSite(model, data, jacNeeded, jacOther, 0)
-    # After extracting jacobian, transpose
-    trans = np.transpose(jacNeeded)
-
+    transpose = np.transpose(jacobian)
     # Get delta update
-    res = param*(trans @ np.array([dx, dy, dz]))
+    res = param*(transpose @ np.array([dx, dy, dz]))
     
-    return [data.qpos[0]+res[0], data.qpos[1]+res[1], data.qpos[2]+res[2], data.qpos[3]+res[3], data.qpos[4]+res[4], data.qpos[5]+res[5], data.qpos[6]+res[6]]
-    # Use prop to get deviation
+    offset = 0
+    if not(isFirstArm):
+        # Correctly index into qpos
+        offset = Vars.DOF
+
+    return [data.qpos[offset]+res[0], data.qpos[offset+1]+res[1], data.qpos[offset+2]+res[2], data.qpos[offset+3]+res[3], data.qpos[offset+4]+res[4], data.qpos[offset+5]+res[5], data.qpos[offset+6]+res[6]]
 
 # ###########################################################################################
 
 # Use the Jacobian and its pseudoinverse for the inverse kinematics
 
-def GetRawJointPositionListJacobianPInv(data, model, x, y, z):
-    initX = data.site_xpos[0][0]
-    initY = data.site_xpos[0][1]
-    initZ = data.site_xpos[0][2]
+def GetRawJointPositionListJacobianPInv(data, model, x, y, z, jacobian, isFirstArm):
+    index = 0
+    if not(isFirstArm):
+        # First arm
+        index = 1
+    initX = data.site_xpos[index][0]
+    initY = data.site_xpos[index][1]
+    initZ = data.site_xpos[index][2]
 
     dx = x-initX
     dy = y-initY
@@ -78,23 +83,29 @@ def GetRawJointPositionListJacobianPInv(data, model, x, y, z):
     Vars.SSQ_ERROR = sq
     param = 1  
 
-    jacNeeded = np.zeros((3, Vars.DOF))
-    jacOther = np.zeros((3, Vars.DOF))
-    mujoco.mj_jacSite(model, data, jacNeeded, jacOther, 0)
-    #trans = np.transpose(jacNeeded)
-    ps = np.linalg.pinv(jacNeeded)
+    ps = np.linalg.pinv(jacobian)
     
     res = param*(ps @ np.array([dx, dy, dz]))
-    return [data.qpos[0]+res[0], data.qpos[1]+res[1], data.qpos[2]+res[2], data.qpos[3]+res[3], data.qpos[4]+res[4], data.qpos[5]+res[5], data.qpos[6]+res[6]]
+
+    offset = 0
+    if not(isFirstArm):
+        # Correctly index into qpos
+        offset = Vars.DOF
+    
+    return [data.qpos[offset]+res[0], data.qpos[offset+1]+res[1], data.qpos[offset+2]+res[2], data.qpos[offset+3]+res[3], data.qpos[offset+4]+res[4], data.qpos[offset+5]+res[5], data.qpos[offset+6]+res[6]]
     
 # ###########################################################################################
 
 # Use the Jacobian and a safe pseudoinverse for the inverse kinematics
 
-def GetRawJointPositionListJacobianPInvSpecial(data, model, x, y, z):
-    initX = data.site_xpos[0][0]
-    initY = data.site_xpos[0][1]
-    initZ = data.site_xpos[0][2]
+def GetRawJointPositionListJacobianPInvSpecial(data, model, x, y, z, jacobian, isFirstArm):
+    index = 0
+    if not(isFirstArm):
+        # First arm
+        index = 1
+    initX = data.site_xpos[index][0]
+    initY = data.site_xpos[index][1]
+    initZ = data.site_xpos[index][2]
 
     dx = x-initX
     dy = y-initY
@@ -104,12 +115,14 @@ def GetRawJointPositionListJacobianPInvSpecial(data, model, x, y, z):
     Vars.SSQ_ERROR = sq
     param = 0.96  
 
-    jacNeeded = np.zeros((3, Vars.DOF))
-    jacOther = np.zeros((3, Vars.DOF))
-    mujoco.mj_jacSite(model, data, jacNeeded, jacOther, 0)
-    #trans = np.transpose(jacNeeded)
-    ps = MatrixHelper.GetAdjustedPInv(jacNeeded)
+    ps = MatrixHelper.GetAdjustedPInv(jacobian)
     
     res = param*(ps @ np.array([dx, dy, dz]))
-    return [data.qpos[0]+res[0], data.qpos[1]+res[1], data.qpos[2]+res[2], data.qpos[3]+res[3], data.qpos[4]+res[4], data.qpos[5]+res[5], data.qpos[6]+res[6]]
+
+    offset = 0
+    if not(isFirstArm):
+        # Correctly index into qpos
+        offset = Vars.DOF
+    
+    return [data.qpos[offset]+res[0], data.qpos[offset+1]+res[1], data.qpos[offset+2]+res[2], data.qpos[offset+3]+res[3], data.qpos[offset+4]+res[4], data.qpos[offset+5]+res[5], data.qpos[offset+6]+res[6]]
   
