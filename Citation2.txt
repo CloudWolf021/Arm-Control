@@ -1,0 +1,2 @@
+https://mujoco.readthedocs.io/en/2.3.7/modeling.html is an aditional source for creating the XML scene for 
+moving a sphere between two arms.

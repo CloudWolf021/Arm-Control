@@ -1,4 +1,7 @@
 Note: Using the xml format for the franka_fr3 robotic arm, provided by Google DeepMind - Mujoco Menagerie
+Note: arms.xml and armsScene.xml are based off of the provided xml, and handle having a second arm instead of just 1.
+
+Also, the additional sphere object is an extension to the original model. 
 
 cff version 1.2.0
 authors:
