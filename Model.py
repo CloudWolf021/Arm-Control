@@ -2,11 +2,22 @@ import mujoco
 import numpy as np
 import math
 
-
 import Vars
 
-# ###########################################################################################
+'''
+A module for the main functionality related to fitting the linear model, except collecting data. 
+'''
 
+
+'''
+Fit a linear model with 3 inputs and one output using gradient descent, and print the coefficients
+to the console. The model is in the form out = a*x+b*y+c*z+d.
+
+Effectively, an inverse model is made, where the global coordinates are transformed into a specific joint
+position. 
+
+As a note, this is very ineffective, and is kept as a test and potential extension point. 
+'''
 def FitLinearModel(x, y, z, out):
     iters = 400
     numPoints = len(x)
@@ -44,7 +55,9 @@ def FitLinearModel(x, y, z, out):
 
 # ###########################################################################################
 
-# Use the fitted linear models
+'''
+Use the fitted linear models to compute target joint positions.
+'''
 def GetRawJointPositionListModel(data, model, x, y, z):
     j1 = Vars.J1_COEFF[0]*x+Vars.J1_COEFF[1]*y+Vars.J1_COEFF[2]*z+Vars.J1_COEFF[3]
     j2 = Vars.J2_COEFF[0]*x+Vars.J2_COEFF[1]*y+Vars.J2_COEFF[2]*z+Vars.J2_COEFF[3]

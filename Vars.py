@@ -1,3 +1,8 @@
+'''
+A module for storing the general constants and the global variables for state tracking. 
+'''
+
+
 ARM_PATH = "Arm/franka_fr3/scene.xml"
 DUAL_ARM_PATH = "Arm/franka_fr3/armsScene.xml"
 
@@ -10,12 +15,19 @@ J5_COEFF = [0.8666970216948578, 0.6320634809996812, 0.6506290422606809, -0.95375
 J6_COEFF = [-0.7938367508375074, -0.5208225493558957, -1.05198114362534, 2.8706225798542824]
 J7_COEFF = [2.0157677154681846, -0.43709335271725364, -2.015475928600283, 1.0147229521093233]
 
-# Effective enumeration for the type of control used; used to prevent duplication
+# Enumeration for the type of control used; used to prevent duplication
 JT = 1
 JPINV = 2
 JPINVS = 3
 JSOLVE = 4
 MODEL = 5
+
+# Base mode enumeration
+RUN_CONTROL = "1"
+COLLECT_DATA = "2"
+RUN_DUAL_ARMS = "3"
+
+# BEGIN Iteration constants
 
 # How many iterations the simulation will run for unless if it is terminated early
 NUM_ITERS_COLLECT = 2400
@@ -27,21 +39,32 @@ NUM_ITERS_REG = 10800
 NUM_ITERS_FAIL = 200
 
 # The maximum legal iterations for a single call for the arm to move
-TIMEOUT_ITERS = 700
+TIMEOUT_ITERS = 1000
 
+# Extra iterations to wait for the sphere to settle
 EXTRA_WAIT_ITERS = 10
+
+# END Iteration constants
 
 # Threshold at which end effector position is considered to not have decreased sufficiently across
 # 2 successive simulation iterations
 IMPROVEMENT_FAIL_THRESHOLD = 0.000005
+
+# Squared error must exceed this for the improvement failure to be checked, to prevent false 
+# detections of unreachability when the arm is still converging to the target position. 
+CHECK_IMPROVEMENT_FAIL_THRESHOLD = 0.015
 
 EXPECTED_JOINT_NAME_LEN = 9
 ASCII_1 = 49
 ASCII_5 = 53
 ASCII_7 = 55
 
+# DOF for a single arm
 DOF = 7
+
+# Total DOF for two arms and 1 free joint for the sphere
 ADJ_DOF = 20
+
 # Ordered limits extracted from the xml format: https://github.com/google-deepmind/mujoco_menagerie/blob/main/franka_fr3/fr3.xml
 # Citation outside of document
 JOINT_MIN_LIMITS = [-2.7437, -1.7837, -2.9007, -3.0421, -2.8065, 0.5445, -3.0159]
@@ -51,19 +74,22 @@ JOINT_MAX_LIMITS = [2.7437, 1.7837, 2.9007, -0.1518, 2.8065, 4.5169, 3.0159]
 ARM1_HOME_X = -0.04
 ARM1_HOME_Y = 0.31
 ARM1_HOME_Z = 0.14
-ARM_LOW_Z = 0.14
 
+# Sphere and dual-arm related constants
 ARM2_OFFSET = 1.5
 SPHERE_CENTER_OFFSET = 0.14
-# Tend to push the sphere closer back into the center
+# Tend to push the sphere closer back into the center - adjust outwards
 SPHERE_HORIZ_OFFSET_MUL = 1.2
 
 # END Constants
+
+# ###########################################################################################
 
 # BEGIN Globals
 
 # Determine if the arm has stabilized at a location that is distant from the target point
 SSQ_ERROR = -1
+# Number of successive iterations with limited change
 CUR_FAIL_ITERS = 0
 
 # END Globals

@@ -5,18 +5,29 @@ import math
 import random
 
 import Helpers
-# Global variables and constants
 import Vars
 import Model
 import JacobianIterSolve
 import JacobianGradSolve
 
-# Helper source https://mujoco.readthedocs.io/en/stable/python.html
+'''
+The main module that orchestrates the desired functionalities such as collecting data, moving an arm between points in space,
+and running a simulation where two identical arms pass a ball between each other. 
+
+Helper source https://mujoco.readthedocs.io/en/stable/python.html
+'''
+
 
 ###############################################################################
 ###############################################################################
 
-# High-level data collection routine for the model
+
+'''
+High-level data collection routine for the fitted model. 
+
+The arm is moved between randomly generated joint position sets, and the joint positions in
+addition to the output are recorded.
+'''
 def CollectDataRoutine(seedIn = 11538813):
     try:
         # Load model and data
@@ -74,12 +85,13 @@ def CollectDataRoutine(seedIn = 11538813):
 
 # ###########################################################################################
 
-# Attempt to move to a specific position with no safety checks besides the iteration timeout
-# Intended to be used as a helper for when a sphere is moved between the two arms
-# The input (x, y, z) coordinates are global
-# Smaller delta so that the arm does not try to go further into the sphere
-# This method can handle moving either arm
+'''
+Attempt to move to a specific position with no safety checks besides the iteration timeout.
+The input coordinates are global, and are not relative to each arm. 
 
+Note: This is intended to be used as a helper for when a sphere is moved between the two arms.
+It can be used for either arm. 
+'''
 def MoveToLocationUnchecked(x, y, z, model, data, viewer, controlType, isFirstArm = True, delta = 0.005):
     iter = 0
     # Wait additional iterations for the system to stabilize
@@ -94,9 +106,6 @@ def MoveToLocationUnchecked(x, y, z, model, data, viewer, controlType, isFirstAr
                 iter += 1
                 continue
         iter += 1
-        #print(data.qpos)
-        #data.ctrl[2*Vars.DOF]  = 0.2
-        #print(data.qpos)
 
         mujoco.mj_step1(model, data)
 
@@ -121,9 +130,18 @@ def MoveToLocationUnchecked(x, y, z, model, data, viewer, controlType, isFirstAr
         viewer.sync()
     print("Failed to reach point")
         
+# ###########################################################################################
 
-# This method can only handle moving one of the arms
+'''
+The high-level control routine for moving an arm between global positions. 
+- This method will first launch the simulation and prompt the user for solver type. 
+- Then, it will continually ask the user for input (x, y, z) coordinates and attempt to move the arm
+  to them
+- There is a high-level iteration maximum and each specific movement is limited on iterations. 
 
+Note: This method can only handle moving only the first arm. MoveToLocationUnchecked can handle
+either arm but performs just one motion.
+'''
 def ControlRoutine(controlType, verbose = False, delta = 0.0008):
     try:
         # Load model and data
@@ -192,8 +210,12 @@ def ControlRoutine(controlType, verbose = False, delta = 0.0008):
 
 # ###########################################################################################
 
-# Move a object between 2 versions of the arm
-
+'''
+The high-level routine for the sphere movement simulation using two arms. 
+- The simulation is loaded
+- The arms will pass control to each other and repeatedly attempt to pass the sphere towards the
+  other arm. 
+'''
 def MoveObjectRoutine():
     try:
         # Load model and data
@@ -203,6 +225,7 @@ def MoveObjectRoutine():
         print(f"There was an error obtaining the model. Path may not exist or something else went wrong. \nThe error is {e}.")
         return
     with mujoco.viewer.launch_passive(model, data) as viewer:
+        # Move the two arms to the home position
         MoveToLocationUnchecked(Vars.ARM1_HOME_X, Vars.ARM1_HOME_Y, Vars.ARM1_HOME_Z, model, data, viewer, Vars.JSOLVE)
         MoveToLocationUnchecked(Vars.ARM1_HOME_X, Vars.ARM2_OFFSET-Vars.ARM1_HOME_Y, Vars.ARM1_HOME_Z, model, data, viewer, Vars.JSOLVE, False)
         
@@ -212,9 +235,17 @@ def MoveObjectRoutine():
             if horizPos > Vars.SPHERE_CENTER_OFFSET/2:
                 horizPos += 2.4*Vars.SPHERE_CENTER_OFFSET
             elif horizPos < -Vars.SPHERE_CENTER_OFFSET/2:
-                horizPos -= 2.4*Vars.SPHERE_CENTER_OFFSET    
-            MoveToLocationUnchecked(horizPos, data.site_xpos[2][1]-Vars.SPHERE_CENTER_OFFSET, Vars.ARM_LOW_Z, model, data, viewer, Vars.JSOLVE)
-            MoveToLocationUnchecked(data.site_xpos[2][0] * Vars.SPHERE_HORIZ_OFFSET_MUL, data.site_xpos[2][1]-Vars.SPHERE_CENTER_OFFSET, Vars.ARM_LOW_Z, model, data, viewer, Vars.JSOLVE)
+                horizPos -= 2.4*Vars.SPHERE_CENTER_OFFSET   
+
+            # First arm
+
+            # Move to corrected position to account possibility of the sphere moving outwards excessively 
+            MoveToLocationUnchecked(horizPos, data.site_xpos[2][1]-Vars.SPHERE_CENTER_OFFSET, Vars.ARM1_HOME_Z, model, data, viewer, Vars.JSOLVE)
+
+            # Move slightly inwards, likely pushing the ball closer to the centerline between the two arms. 
+            MoveToLocationUnchecked(data.site_xpos[2][0] * Vars.SPHERE_HORIZ_OFFSET_MUL, data.site_xpos[2][1]-Vars.SPHERE_CENTER_OFFSET, Vars.ARM1_HOME_Z, model, data, viewer, Vars.JSOLVE)
+            
+            # Move to the home position
             MoveToLocationUnchecked(Vars.ARM1_HOME_X, Vars.ARM1_HOME_Y, Vars.ARM1_HOME_Z, model, data, viewer, Vars.JSOLVE)
 
             horizPos = data.site_xpos[2][0]
@@ -222,11 +253,17 @@ def MoveObjectRoutine():
                 horizPos += 2.4*Vars.SPHERE_CENTER_OFFSET
             elif horizPos < -Vars.SPHERE_CENTER_OFFSET/2:
                 horizPos -= 2.4*Vars.SPHERE_CENTER_OFFSET    
+            
             # Second arm
-            MoveToLocationUnchecked(horizPos, data.site_xpos[2][1]+Vars.SPHERE_CENTER_OFFSET, Vars.ARM_LOW_Z, model, data, viewer, Vars.JSOLVE, False)
-            MoveToLocationUnchecked(data.site_xpos[2][0] * Vars.SPHERE_HORIZ_OFFSET_MUL, data.site_xpos[2][1]+Vars.SPHERE_CENTER_OFFSET, Vars.ARM_LOW_Z, model, data, viewer, Vars.JSOLVE, False)
-            MoveToLocationUnchecked(Vars.ARM1_HOME_X, Vars.ARM2_OFFSET-Vars.ARM1_HOME_Y, Vars.ARM1_HOME_Z, model, data, viewer, Vars.JSOLVE, False)
 
+            # Move to corrected position to account possibility of the sphere moving outwards excessively
+            MoveToLocationUnchecked(horizPos, data.site_xpos[2][1]+Vars.SPHERE_CENTER_OFFSET, Vars.ARM1_HOME_Z, model, data, viewer, Vars.JSOLVE, False)
+            
+            # Move slightly inwards, likely pushing the ball closer to the centerline between the two arms.
+            MoveToLocationUnchecked(data.site_xpos[2][0] * Vars.SPHERE_HORIZ_OFFSET_MUL, data.site_xpos[2][1]+Vars.SPHERE_CENTER_OFFSET, Vars.ARM1_HOME_Z, model, data, viewer, Vars.JSOLVE, False)
+            
+            # Move to the home position
+            MoveToLocationUnchecked(Vars.ARM1_HOME_X, Vars.ARM2_OFFSET-Vars.ARM1_HOME_Y, Vars.ARM1_HOME_Z, model, data, viewer, Vars.JSOLVE, False)
     return
 
 
@@ -234,32 +271,48 @@ def MoveObjectRoutine():
 # ###########################################################################################
 # ###########################################################################################
 
-# Main entry point which handles base input and runs either data collection or a high-level
-# control routine where the user indicates what positions the robot arm to move to
+
+'''
+Main entry point which handles base input
+
+There are three options:
+- A high-level control routine which prompts the user to input global positions to which the 
+  robot arm end effector must move to. 
+- Data is collected for training an inverse kinematics model
+- A simulation where two robot arms move a sphere between them, taking turns, and ensuring that it
+  does not move out of their reach. 
+'''
 def main ():
-    print("Please enter a mode:\n1. Run control\n2. Collect Data\n3. Move Sphere Between Arms")
+    print("Please enter a mode (1-3 inclusive):\n1. Run control\n2. Collect Data\n3. Move Sphere Between Arms")
     choice = input()
-    
-    if (not(choice == "1" or choice == "2" or choice == "3")):
-        print("Invalid. Terminating.")
-        return
-    if (choice == "1"):
-        print("Please enter a solving method:\n1. Solve with transpose\n2. Solve with raw psuedoinverse\n3. Solve with safe pseudoinverse\n4. Solve with gradient descent\n5. Solve with model (not recommended)\n")
+
+    if (choice == Vars.RUN_CONTROL):
+        print("Please enter a solving method (1-5 inclusive):")
+        print("1. Solve with transpose")
+        print("2. Solve with raw psuedoinverse")
+        print("3. Solve with safe pseudoinverse")
+        print("4. Solve with gradient descent")
+        print("5. Solve with model (not recommended)")
+
         solverChoice = input()
         firstChar = solverChoice[0]
         charASCII = ord(firstChar)
+        # Expecting 1, 2, 3, 4, or 5
         if (charASCII >= Vars.ASCII_1 and charASCII <= Vars.ASCII_5):
-            # Exploit sequential order of options
+            # Utilize sequential order of options
             ControlRoutine(charASCII - Vars.ASCII_1 + 1, False, 0.00008)   
             return
-        print("Invalid. Terminating.")
-        return
-    elif (choice == "2"):  
+        # Input string was not correct
+        print("Invalid input - please enter a digit 1-5, inclusive. Terminating.")
+    elif (choice == Vars.COLLECT_DATA):  
         CollectDataRoutine()
         return
-    else:   # Move object
+    elif (choice == Vars.RUN_DUAL_ARMS):
         MoveObjectRoutine()
         return
+    else:  
+        print("Invalid option - please enter a digit 1-3, inclusive. Terminating.")
+
 
 # Run the main entry point
 main()

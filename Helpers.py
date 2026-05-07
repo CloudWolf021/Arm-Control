@@ -9,6 +9,7 @@ import Vars
 A module with various motion and computation helpers
 '''
 
+
 '''
 Check whether the input array of joint positions is legal given the joint limits of the arms.
 '''
@@ -40,15 +41,23 @@ def ClampPositions(input) -> list:
 
 # ###########################################################################################
 
-# Move each of the robot joints to a specified position
-# is requireValid is true and the input joints are not all in the required limits, 
-# False will be returned to indicate an error
-# Will support indexing for the second arm roo
+'''
+Move each of the robot joints to a specified position by directly setting the core Mujoco control
+inputs (data.ctrl). 
+
+If requireValid is true and the input joint positions are not in the required ranges,
+False will be returned to indicate an error.
+
+This method supports both the first and second robot arm, by taking an input parameter and 
+utilizing a start index. Compute
+'''
 def MoveToJointPositionsRaw(data, input, requireValid, isFirstArm = True) -> bool:
     if requireValid:
-        if not(CheckPositions(input)): return False
+        if not(CheckPositions(input)): 
+            return False
     inputValidated = ClampPositions(input)  
 
+    # The second arm is controlled by indices 7-13, inclusive. 
     offset = 0
     if not(isFirstArm): 
         offset = Vars.DOF 
@@ -60,16 +69,16 @@ def MoveToJointPositionsRaw(data, input, requireValid, isFirstArm = True) -> boo
 
 # ###########################################################################################
 
-# Compute the mean squared error for the arm position relative to the desired joint angles
-def ComputeError(data, required) -> float:
-    sum = 0
-    for i in range(Vars.DOF):
-        sum += ((data[i] - required[i])**2)
-    return sum / Vars.DOF
+'''
+Determine if either the first or second arm has reached the desired target position, using a 
+specific threshold. This function takes global (x, y, z) coordinates, and obtains 
+instantaneous global coordinates for the end effector, which are used for determining error. 
 
-# Input coordinates are global, and the instantaneous global coordinates are also obtained. 
-
+To determine deviation from the target position, squared error is used. 
+'''
 def HaveReachedTarget(data, x, y, z, delta = 0.0002, isFirstArm = True):
+    # Must ensure to get the coordinates of the correct end effector - for the first arm
+    # it is the first site, and for the second it is the second site. 
     index = 0
     if (not (isFirstArm)):
         # Second arm
@@ -78,20 +87,35 @@ def HaveReachedTarget(data, x, y, z, delta = 0.0002, isFirstArm = True):
     yActual = data.site_xpos[index][1]
     zActual = data.site_xpos[index][2]
 
-
     err = (x-xActual)**2+ (y-yActual)**2+ (z-zActual)**2
-    #print(xActual)
-    #print(yActual)
-    #print(zActual)
     return (err < delta)
 
-    
+# ###########################################################################################
+
+'''
+Set the joint positions randomly (using data.ctrl, leading to delayed changes due to arm dynamics)
+
+This method is only used for the primary robotic arm. 
+''' 
 def SetPosRandom(data):
     for i in range(Vars.DOF):
         curRand = random.random()
+
+        # Get a random, valid joint position for each joint. 
         randomVal = Vars.JOINT_MIN_LIMITS[i] + (Vars.JOINT_MAX_LIMITS[i] - Vars.JOINT_MIN_LIMITS[i]) * curRand
         data.ctrl[i] = randomVal
 
+# ###########################################################################################
+# ###########################################################################################
+# BEGIN Jacobian Helpers
+
+'''
+Take the relevant portion of the Jacobian for one of the robotic arms
+
+If startIndex is 0, then the first Vars.DOF elements are taken for each row,
+corresponding to the Jacobian for the first row. Else, if the startIndex is Vars.DOF,
+the elements at indices 7-13, inclusive, for the second arm, are taken.
+'''
 def TruncateJacobian(jacobian, startIndex):
     res = np.zeros((3, Vars.DOF))
     for i in range(3):
@@ -99,6 +123,11 @@ def TruncateJacobian(jacobian, startIndex):
             res[i][j] = jacobian[i][j+startIndex]
     return res
 
+# ###########################################################################################
+
+'''
+Using TruncateJacobian, extract the relevant 3 by Vars.DOF matrix for the first arm.
+'''
 def ExtractFirstJacobian(model, data):
     jacNeeded1 = np.zeros((3, Vars.ADJ_DOF))
     jacOther1 = np.zeros((3, Vars.ADJ_DOF))
@@ -107,6 +136,11 @@ def ExtractFirstJacobian(model, data):
     # Extract the relevant portion of the jacobian
     return TruncateJacobian(jacNeeded1, 0)
 
+# ###########################################################################################
+
+'''
+Using TruncateJacobian, extract the relevant 3 by Vars.DOF matrix for the second arm.
+'''
 def ExtractSecondJacobian(model, data):
     jacNeeded2 = np.zeros((3, Vars.ADJ_DOF))
     jacOther2 = np.zeros((3, Vars.ADJ_DOF))
@@ -114,3 +148,5 @@ def ExtractSecondJacobian(model, data):
 
     # Extract the relevant portion of the jacobian
     return TruncateJacobian(jacNeeded2, Vars.DOF)
+
+# END Jacobian Helpers
