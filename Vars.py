@@ -44,6 +44,9 @@ TIMEOUT_ITERS = 1000
 # Extra iterations to wait for the sphere to settle
 EXTRA_WAIT_ITERS = 10
 
+# Iterations to wait for the internal simulation to finish stepping in the case of using the model
+MODEL_STEP_ITERS = 500
+
 # END Iteration constants
 
 # Threshold at which end effector position is considered to not have decreased sufficiently across

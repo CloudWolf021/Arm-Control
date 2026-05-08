@@ -3,6 +3,7 @@ import mujoco.viewer
 import numpy as np
 import math
 import random
+import time
 
 import Helpers
 import Vars
@@ -134,7 +135,7 @@ def MoveToLocationUnchecked(x, y, z, model, data, viewer, controlType, isFirstAr
 
 '''
 The high-level control routine for moving an arm between global positions. 
-- This method will first launch the simulation and prompt the user for solver type. 
+- This method will first launch the simulation
 - Then, it will continually ask the user for input (x, y, z) coordinates and attempt to move the arm
   to them
 - There is a high-level iteration maximum and each specific movement is limited on iterations. 
@@ -153,6 +154,7 @@ def ControlRoutine(controlType, verbose = False, delta = 0.0008):
 
     iter = 0
     curStartIter = 0
+    startTime = 0
     # Set to initial end effector positions -> effectively 0 error
     xN = 0
     yN = 0
@@ -163,23 +165,41 @@ def ControlRoutine(controlType, verbose = False, delta = 0.0008):
             if (iter == 0 or Helpers.HaveReachedTarget(data, xN, yN, zN, delta) or 
                Vars.CUR_FAIL_ITERS == Vars.NUM_ITERS_FAIL or 
                (iter - curStartIter) == Vars.TIMEOUT_ITERS): 
-                # prompt input
+                # Handle getting new input and possibly reporting outcome of previous motion 
+
                 if (iter > 0):
-                    print(f"The number of iterations is {iter - curStartIter} and error is {Vars.SSQ_ERROR}")
-                    curStartIter = 0
-                if ((iter - curStartIter) == Vars.TIMEOUT_ITERS):
-                    print("Iteration limit exceeded. Position may also be unreachable.")
-                if (Vars.CUR_FAIL_ITERS == Vars.NUM_ITERS_FAIL):
-                    Vars.CUR_FAIL_ITERS = 0
-                    print("The position is not reachable.")
+                    # In the case of using the model, iter will be 0 and this logic will correctly not be executed. 
+
+                    if verbose: 
+                        print("SUMMARY:\n")
+
+                        if ((iter - curStartIter) == Vars.TIMEOUT_ITERS):
+                            print("- Iteration limit exceeded. Position may be unreachable.\n")
+                        elif (Vars.CUR_FAIL_ITERS == Vars.NUM_ITERS_FAIL):
+                            print("- The position appears to be unreachable.\n")
+
+                        print(f"- x: {data.site_xpos[0][0]} / wanted {xN}, y: {data.site_xpos[0][1]} / wanted {yN}, z: {data.site_xpos[0][2]} / wanted {zN}\n")
+                        print(f"- Summed Squared Error is {Vars.SSQ_ERROR} and the average absolute error per axis is {np.sqrt(Vars.SSQ_ERROR/3)}\n")
+                        print(f"- The number of outer iterations is {iter - curStartIter}.\n")
+
+                        # time source: https://docs.python.org/3/library/time.html#time.perf_counter
+                        newTime = time.perf_counter()
+                        print(f"- Delta time is {1000*(newTime-startTime)} ms.")
+   
+                # Prompt input
                 print("Enter a position for the arm to move to:\nX = ", end = "")
+
                 # Use eval: source GeeksForGeeks: https://www.geeksforgeeks.org/python/eval-in-python/
                 xN = eval(input())
                 print("\nY = ", end = "")
                 yN = eval(input())
                 print("\nZ = ", end = "")
                 zN = eval(input())
+
                 curStartIter = iter
+                Vars.CUR_FAIL_ITERS = 0
+                startTime = time.perf_counter()
+
 
             iter+=1
             # For the first step, will have 1 iteration, which is correct
@@ -199,13 +219,32 @@ def ControlRoutine(controlType, verbose = False, delta = 0.0008):
                 Helpers.MoveToJointPositionsRaw(data, JacobianGradSolve.GetRawJointPositionListJacobianSolve(data, model, xN, yN, zN, jacNeeded), False)
             elif (controlType == Vars.MODEL):
                 Helpers.MoveToJointPositionsRaw(data, Model.GetRawJointPositionListModel(data, model, xN, yN, zN), False)
+                
+                # Will always get the same output -> must allow the internal simulation to iterate and reach the target joint positions. 
+                for i in range(Vars.MODEL_STEP_ITERS):
+                    mujoco.mj_step(model, data)
+                    viewer.sync()
+
+                # Will indicate to prompt the user for new input by triggering the if statement 
+                iter = 0
+                curX = data.site_xpos[0][0]
+                curY = data.site_xpos[0][1]
+                curZ = data.site_xpos[0][2]
+                sqErr = (xN-curX)**2+(yN-curY)**2+(zN-curZ)**2
+                avgErrDir = np.sqrt(sqErr/3)
+
+                if verbose: 
+                    print("SUMMARY:\n")
+                    print(f"- x: {curX} / wanted {xN}, y: {curY} / wanted {yN}, z: {curZ} / wanted {zN}\n")
+                    print(f"- Summed Squared Error is {sqErr} and the average absolute error per axis is {avgErrDir}\n")
+                    print("- Solving has no notion of iterations.\n ")
+                    newTime = time.perf_counter()
+                    print(f"- Delta time is {1000*(newTime-startTime)} ms.")
+                continue            
             elif (controlType == Vars.JPINVS):
                 Helpers.MoveToJointPositionsRaw(data, JacobianIterSolve.GetRawJointPositionListJacobianPInvSpecial(data, model, xN, yN, zN, jacNeeded), False)
-
-            if verbose: print(f"x: {data.site_xpos[0][0]} / wanted {xN}, y: {data.site_xpos[0][1]} / wanted {yN}, z: {data.site_xpos[0][2]} / wanted {zN}")
             
-            mujoco.mj_step2(model, data)
-
+            mujoco.mj_step2(model, data)      
             viewer.sync()
 
 # ###########################################################################################
@@ -289,7 +328,7 @@ def main ():
     if (choice == Vars.RUN_CONTROL):
         print("Please enter a solving method (1-5 inclusive):")
         print("1. Solve with transpose")
-        print("2. Solve with raw psuedoinverse")
+        print("2. Solve with raw pseudoinverse")
         print("3. Solve with safe pseudoinverse")
         print("4. Solve with gradient descent")
         print("5. Solve with model (not recommended)")
@@ -300,7 +339,7 @@ def main ():
         # Expecting 1, 2, 3, 4, or 5
         if (charASCII >= Vars.ASCII_1 and charASCII <= Vars.ASCII_5):
             # Utilize sequential order of options
-            ControlRoutine(charASCII - Vars.ASCII_1 + 1, False, 0.00008)   
+            ControlRoutine(charASCII - Vars.ASCII_1 + 1, True, 0.00008)   
             return
         # Input string was not correct
         print("Invalid input - please enter a digit 1-5, inclusive. Terminating.")
