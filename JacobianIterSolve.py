@@ -71,16 +71,16 @@ def GetRawJointPositionListHelper(data, model, x, y, z, jacobian, approxMatrix, 
     sq = dx**2+dy**2+dz**2
     Vars.SSQ_ERROR = sq
     deltaErr = prevSq - sq 
+    mustCorrect = False
 
     # Track continuous lack of improvements
-    if (deltaErr < Vars.IMPROVEMENT_FAIL_THRESHOLD and deltaErr > 0 and sq > Vars.CHECK_IMPROVEMENT_FAIL_THRESHOLD):
+    if (deltaErr/sq < Vars.IMPROVEMENT_FAIL_THRESHOLD/Vars.CHECK_IMPROVEMENT_FAIL_THRESHOLD and deltaErr > 0 and sq > Vars.CHECK_IMPROVEMENT_FAIL_THRESHOLD and prevSq > 0):  
         Vars.CUR_FAIL_ITERS += 1
     else:
        Vars.CUR_FAIL_ITERS = 0 
 
     # Compute multiplier depending on squared error
-    param = GetParam(sq, solverType == Vars.JT)    
-
+    param = GetParam(sq, solverType == Vars.JT) 
     res = param*(approxMatrix @ np.array([dx, dy, dz]))
     
     offset = 0

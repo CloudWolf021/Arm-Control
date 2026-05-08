@@ -70,6 +70,24 @@ def MoveToJointPositionsRaw(data, input, requireValid, isFirstArm = True) -> boo
 # ###########################################################################################
 
 '''
+Move the first arm back to its initial position
+
+Note: this is called when there is is an unreachable position or timeout for reaching the final
+position. 
+'''
+
+def Reset(data, model, viewer):
+    for i in range(Vars.DOF):
+        data.ctrl[i] = 0
+    data.ctrl[3] = -0.15
+
+    for i in range(Vars.MODEL_STEP_ITERS):
+        mujoco.mj_step(model, data)
+    viewer.sync()
+
+# ###########################################################################################
+
+'''
 Determine if either the first or second arm has reached the desired target position, using a 
 specific threshold. This function takes global (x, y, z) coordinates, and obtains 
 instantaneous global coordinates for the end effector, which are used for determining error. 
@@ -128,9 +146,13 @@ def TruncateJacobian(jacobian, startIndex):
 '''
 Using TruncateJacobian, extract the relevant 3 by Vars.DOF matrix for the first arm.
 '''
-def ExtractFirstJacobian(model, data):
-    jacNeeded1 = np.zeros((3, Vars.ADJ_DOF))
-    jacOther1 = np.zeros((3, Vars.ADJ_DOF))
+def ExtractFirstJacobian(model, data, isLargeMatrix = True):
+    numCols = Vars.ADJ_DOF
+    if not(isLargeMatrix):
+        numCols = Vars.DOF
+
+    jacNeeded1 = np.zeros((3, numCols))
+    jacOther1 = np.zeros((3, numCols))
     mujoco.mj_jacSite(model, data, jacNeeded1, jacOther1, 0)
 
     # Extract the relevant portion of the jacobian
@@ -150,3 +172,4 @@ def ExtractSecondJacobian(model, data):
     return TruncateJacobian(jacNeeded2, Vars.DOF)
 
 # END Jacobian Helpers
+

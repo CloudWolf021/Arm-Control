@@ -16,11 +16,21 @@ J6_COEFF = [-0.7938367508375074, -0.5208225493558957, -1.05198114362534, 2.87062
 J7_COEFF = [2.0157677154681846, -0.43709335271725364, -2.015475928600283, 1.0147229521093233]
 
 # Enumeration for the type of control used; used to prevent duplication
+
+# Transpose
 JT = 1
+# Raw pseudoinverse
 JPINV = 2
+# Corrected Pseudoinverse
 JPINVS = 3
+# Gradient descent solving
 JSOLVE = 4
-MODEL = 5
+# Special gradient descent that tries to recover from singularities by adjusting the learning rate and creating more instability in position
+JSOLVELR = 5
+# Special gradient descent that performs adjustments to the matrix being used (J^T*J)
+JSOLVEM = 6
+# Using fitted model
+MODEL = 7
 
 # Base mode enumeration
 RUN_CONTROL = "1"
@@ -51,15 +61,14 @@ MODEL_STEP_ITERS = 500
 
 # Threshold at which end effector position is considered to not have decreased sufficiently across
 # 2 successive simulation iterations
-IMPROVEMENT_FAIL_THRESHOLD = 0.000005
+IMPROVEMENT_FAIL_THRESHOLD = 0.00002
 
 # Squared error must exceed this for the improvement failure to be checked, to prevent false 
 # detections of unreachability when the arm is still converging to the target position. 
-CHECK_IMPROVEMENT_FAIL_THRESHOLD = 0.015
+CHECK_IMPROVEMENT_FAIL_THRESHOLD = 0.025
 
 EXPECTED_JOINT_NAME_LEN = 9
 ASCII_1 = 49
-ASCII_5 = 53
 ASCII_7 = 55
 
 # DOF for a single arm

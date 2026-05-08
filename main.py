@@ -93,7 +93,7 @@ The input coordinates are global, and are not relative to each arm.
 Note: This is intended to be used as a helper for when a sphere is moved between the two arms.
 It can be used for either arm. 
 '''
-def MoveToLocationUnchecked(x, y, z, model, data, viewer, controlType, isFirstArm = True, delta = 0.005):
+def MoveToLocationUnchecked(x, y, z, model, data, viewer, controlType, isLargeMatrix, isFirstArm = True, delta = 0.005):
     iter = 0
     # Wait additional iterations for the system to stabilize
     waitIters = 0
@@ -111,7 +111,7 @@ def MoveToLocationUnchecked(x, y, z, model, data, viewer, controlType, isFirstAr
         mujoco.mj_step1(model, data)
 
         if (isFirstArm):
-            jacobian = Helpers.ExtractFirstJacobian(model, data)
+            jacobian = Helpers.ExtractFirstJacobian(model, data, isLargeMatrix)
         else:
             jacobian = Helpers.ExtractSecondJacobian(model, data)
 
@@ -119,10 +119,16 @@ def MoveToLocationUnchecked(x, y, z, model, data, viewer, controlType, isFirstAr
         # The control routine using an unreliable global model is not used. 
         if (controlType == Vars.JT):
             Helpers.MoveToJointPositionsRaw(data, JacobianIterSolve.GetRawJointPositionListJacobianT(data, model, x, y, z, jacobian, isFirstArm), False, isFirstArm)
-        if (controlType == Vars.JPINV):
+        elif (controlType == Vars.JPINV):
             Helpers.MoveToJointPositionsRaw(data, JacobianIterSolve.GetRawJointPositionListJacobianPInv(data, model, x, y, z, jacobian, isFirstArm), False, isFirstArm)
-        if (controlType == Vars.JSOLVE):
-            Helpers.MoveToJointPositionsRaw(data, JacobianGradSolve.GetRawJointPositionListJacobianSolve(data, model, x, y, z, jacobian, isFirstArm), False, isFirstArm)
+        elif (controlType == Vars.JSOLVE):
+            Helpers.MoveToJointPositionsRaw(data, JacobianGradSolve.GetRawJointPositionListJacobianSolve(data, model, x, y, z, jacobian, False, isFirstArm), False, isFirstArm)
+        elif (controlType == Vars.JSOLVELR):
+            # Parameter for handling singularities is True
+            Helpers.MoveToJointPositionsRaw(data, JacobianGradSolve.GetRawJointPositionListJacobianSolve(data, model, x, y, z, jacobian, True, False, isFirstArm), False, isFirstArm)
+        elif (controlType == Vars.JSOLVEM):
+            # Parameter for adjusting matrix is True
+            Helpers.MoveToJointPositionsRaw(data, JacobianGradSolve.GetRawJointPositionListJacobianSolve(data, model, x, y, z, jacobian, False, True, isFirstArm), False, isFirstArm)
         elif (controlType == Vars.JPINVS):
             Helpers.MoveToJointPositionsRaw(data, JacobianIterSolve.GetRawJointPositionListJacobianPInvSpecial(data, model, x, y, z, jacobian, isFirstArm), False, isFirstArm)
         
@@ -138,12 +144,14 @@ The high-level control routine for moving an arm between global positions.
 - This method will first launch the simulation
 - Then, it will continually ask the user for input (x, y, z) coordinates and attempt to move the arm
   to them
-- There is a high-level iteration maximum and each specific movement is limited on iterations. 
+- There is a high-level iteration limit and each specific movement has a limited iteration count.
+
+If singularityAdj is enabled, the arm will perform corrective measures when a possible singularity is detected.
 
 Note: This method can only handle moving only the first arm. MoveToLocationUnchecked can handle
-either arm but performs just one motion.
+either arm.
 '''
-def ControlRoutine(controlType, verbose = False, delta = 0.0008):
+def ControlRoutine(controlType, numStdUpdateSteps, verbose = False, delta = 0.0008, singularityAdj = False):
     try:
         # Load model and data
         model = mujoco.MjModel.from_xml_path(Vars.ARM_PATH)
@@ -174,8 +182,12 @@ def ControlRoutine(controlType, verbose = False, delta = 0.0008):
                         print("SUMMARY:\n")
 
                         if ((iter - curStartIter) == Vars.TIMEOUT_ITERS):
+                            if singularityAdj:
+                                Helpers.Reset(data, model, viewer)
                             print("- Iteration limit exceeded. Position may be unreachable.\n")
                         elif (Vars.CUR_FAIL_ITERS == Vars.NUM_ITERS_FAIL):
+                            if singularityAdj:
+                                Helpers.Reset(data, model, viewer)
                             print("- The position appears to be unreachable.\n")
 
                         print(f"- x: {data.site_xpos[0][0]} / wanted {xN}, y: {data.site_xpos[0][1]} / wanted {yN}, z: {data.site_xpos[0][2]} / wanted {zN}\n")
@@ -213,10 +225,18 @@ def ControlRoutine(controlType, verbose = False, delta = 0.0008):
             # Call the appropriate method depending on what control type is desired. 
             if (controlType == Vars.JT):
                 Helpers.MoveToJointPositionsRaw(data, JacobianIterSolve.GetRawJointPositionListJacobianT(data, model, xN, yN, zN, jacNeeded), False)
-            if (controlType == Vars.JPINV):
+            elif (controlType == Vars.JPINV):
                 Helpers.MoveToJointPositionsRaw(data, JacobianIterSolve.GetRawJointPositionListJacobianPInv(data, model, xN, yN, zN, jacNeeded), False)
-            if (controlType == Vars.JSOLVE):
-                Helpers.MoveToJointPositionsRaw(data, JacobianGradSolve.GetRawJointPositionListJacobianSolve(data, model, xN, yN, zN, jacNeeded), False)
+            elif (controlType == Vars.JPINVS):
+                Helpers.MoveToJointPositionsRaw(data, JacobianIterSolve.GetRawJointPositionListJacobianPInvSpecial(data, model, xN, yN, zN, jacNeeded), False)
+            elif (controlType == Vars.JSOLVE):
+                Helpers.MoveToJointPositionsRaw(data, JacobianGradSolve.GetRawJointPositionListJacobianSolve(data, model, xN, yN, zN, jacNeeded, False, False), False)
+            elif (controlType == Vars.JSOLVELR):
+                # Parameter for handling singularities is True
+                Helpers.MoveToJointPositionsRaw(data, JacobianGradSolve.GetRawJointPositionListJacobianSolve(data, model, xN, yN, zN, jacNeeded, True, False), False)
+            elif (controlType == Vars.JSOLVEM):
+                # Parameter for adjusting matrix is True
+                Helpers.MoveToJointPositionsRaw(data, JacobianGradSolve.GetRawJointPositionListJacobianSolve(data, model, xN, yN, zN, jacNeeded, False, True), False)        
             elif (controlType == Vars.MODEL):
                 Helpers.MoveToJointPositionsRaw(data, Model.GetRawJointPositionListModel(data, model, xN, yN, zN), False)
                 
@@ -241,11 +261,16 @@ def ControlRoutine(controlType, verbose = False, delta = 0.0008):
                     newTime = time.perf_counter()
                     print(f"- Delta time is {1000*(newTime-startTime)} ms.")
                 continue            
-            elif (controlType == Vars.JPINVS):
-                Helpers.MoveToJointPositionsRaw(data, JacobianIterSolve.GetRawJointPositionListJacobianPInvSpecial(data, model, xN, yN, zN, jacNeeded), False)
+
+            mujoco.mj_step2(model, data)  
+            viewer.sync() 
+
+            # Perform additional updates to reach the desired joint positions - the change is not instantaneous
+            for i in range(numStdUpdateSteps-1):
+                mujoco.mj_step(model, data) 
+                viewer.sync() 
             
-            mujoco.mj_step2(model, data)      
-            viewer.sync()
+            
 
 # ###########################################################################################
 
@@ -265,8 +290,8 @@ def MoveObjectRoutine():
         return
     with mujoco.viewer.launch_passive(model, data) as viewer:
         # Move the two arms to the home position
-        MoveToLocationUnchecked(Vars.ARM1_HOME_X, Vars.ARM1_HOME_Y, Vars.ARM1_HOME_Z, model, data, viewer, Vars.JSOLVE)
-        MoveToLocationUnchecked(Vars.ARM1_HOME_X, Vars.ARM2_OFFSET-Vars.ARM1_HOME_Y, Vars.ARM1_HOME_Z, model, data, viewer, Vars.JSOLVE, False)
+        MoveToLocationUnchecked(Vars.ARM1_HOME_X, Vars.ARM1_HOME_Y, Vars.ARM1_HOME_Z, model, data, viewer, Vars.JSOLVE, True)
+        MoveToLocationUnchecked(Vars.ARM1_HOME_X, Vars.ARM2_OFFSET-Vars.ARM1_HOME_Y, Vars.ARM1_HOME_Z, model, data, viewer, Vars.JSOLVE, True, False)
         
         # The arms continuously trade off control and try to keep a sphere between them
         while(True):
@@ -279,13 +304,13 @@ def MoveObjectRoutine():
             # First arm
 
             # Move to corrected position to account possibility of the sphere moving outwards excessively 
-            MoveToLocationUnchecked(horizPos, data.site_xpos[2][1]-Vars.SPHERE_CENTER_OFFSET, Vars.ARM1_HOME_Z, model, data, viewer, Vars.JSOLVE)
+            MoveToLocationUnchecked(horizPos, data.site_xpos[2][1]-Vars.SPHERE_CENTER_OFFSET, Vars.ARM1_HOME_Z, model, data, viewer, Vars.JSOLVE, True)
 
             # Move slightly inwards, likely pushing the ball closer to the centerline between the two arms. 
-            MoveToLocationUnchecked(data.site_xpos[2][0] * Vars.SPHERE_HORIZ_OFFSET_MUL, data.site_xpos[2][1]-Vars.SPHERE_CENTER_OFFSET, Vars.ARM1_HOME_Z, model, data, viewer, Vars.JSOLVE)
+            MoveToLocationUnchecked(data.site_xpos[2][0] * Vars.SPHERE_HORIZ_OFFSET_MUL, data.site_xpos[2][1]-Vars.SPHERE_CENTER_OFFSET, Vars.ARM1_HOME_Z, model, data, viewer, Vars.JSOLVE, True)
             
             # Move to the home position
-            MoveToLocationUnchecked(Vars.ARM1_HOME_X, Vars.ARM1_HOME_Y, Vars.ARM1_HOME_Z, model, data, viewer, Vars.JSOLVE)
+            MoveToLocationUnchecked(Vars.ARM1_HOME_X, Vars.ARM1_HOME_Y, Vars.ARM1_HOME_Z, model, data, viewer, Vars.JSOLVE, True)
 
             horizPos = data.site_xpos[2][0]
             if horizPos > Vars.SPHERE_CENTER_OFFSET/2:
@@ -296,13 +321,13 @@ def MoveObjectRoutine():
             # Second arm
 
             # Move to corrected position to account possibility of the sphere moving outwards excessively
-            MoveToLocationUnchecked(horizPos, data.site_xpos[2][1]+Vars.SPHERE_CENTER_OFFSET, Vars.ARM1_HOME_Z, model, data, viewer, Vars.JSOLVE, False)
+            MoveToLocationUnchecked(horizPos, data.site_xpos[2][1]+Vars.SPHERE_CENTER_OFFSET, Vars.ARM1_HOME_Z, model, data, viewer, Vars.JSOLVE, True, False)
             
             # Move slightly inwards, likely pushing the ball closer to the centerline between the two arms.
-            MoveToLocationUnchecked(data.site_xpos[2][0] * Vars.SPHERE_HORIZ_OFFSET_MUL, data.site_xpos[2][1]+Vars.SPHERE_CENTER_OFFSET, Vars.ARM1_HOME_Z, model, data, viewer, Vars.JSOLVE, False)
+            MoveToLocationUnchecked(data.site_xpos[2][0] * Vars.SPHERE_HORIZ_OFFSET_MUL, data.site_xpos[2][1]+Vars.SPHERE_CENTER_OFFSET, Vars.ARM1_HOME_Z, model, data, viewer, Vars.JSOLVE, True, False)
             
             # Move to the home position
-            MoveToLocationUnchecked(Vars.ARM1_HOME_X, Vars.ARM2_OFFSET-Vars.ARM1_HOME_Y, Vars.ARM1_HOME_Z, model, data, viewer, Vars.JSOLVE, False)
+            MoveToLocationUnchecked(Vars.ARM1_HOME_X, Vars.ARM2_OFFSET-Vars.ARM1_HOME_Y, Vars.ARM1_HOME_Z, model, data, viewer, Vars.JSOLVE, True, False)
     return
 
 
@@ -326,23 +351,29 @@ def main ():
     choice = input()
 
     if (choice == Vars.RUN_CONTROL):
-        print("Please enter a solving method (1-5 inclusive):")
-        print("1. Solve with transpose")
-        print("2. Solve with raw pseudoinverse")
-        print("3. Solve with safe pseudoinverse")
-        print("4. Solve with gradient descent")
-        print("5. Solve with model (not recommended)")
+        # Loop continuously until obtaining valid input
+        while (True):
+            print("Please enter a solving method (1-7 inclusive):")
+            print("1. Solve with transpose")
+            print("2. Solve with raw pseudoinverse")
+            print("3. Solve with safe pseudoinverse")
+            print("4. Solve with gradient descent")
+            print("5. Solve with gradient descent and singularity avoidance (learning rate adjustment)")
+            print("6. Solve with gradient descent and singularity avoidance (matrix adjustment)")
+            print("7. Solve with model (not recommended)")
 
-        solverChoice = input()
-        firstChar = solverChoice[0]
-        charASCII = ord(firstChar)
-        # Expecting 1, 2, 3, 4, or 5
-        if (charASCII >= Vars.ASCII_1 and charASCII <= Vars.ASCII_5):
-            # Utilize sequential order of options
-            ControlRoutine(charASCII - Vars.ASCII_1 + 1, True, 0.00008)   
-            return
-        # Input string was not correct
-        print("Invalid input - please enter a digit 1-5, inclusive. Terminating.")
+            solverChoice = input()
+            # If empty input will short-circuit access at index 0
+            # Expecting 1, 2, 3, 4, 5, 6, or 7
+            if (len(solverChoice) == 1 and ord(solverChoice[0]) >= Vars.ASCII_1 and ord(solverChoice[0]) <= Vars.ASCII_7):
+                # Utilize sequential order of options
+                print("Enter y to reset the arm after possible singularities and unreachable points are encountered, or any other input to not do so.")
+                handleSingularities = input()
+                mustHandle = (handleSingularities == "y")
+                ControlRoutine(ord(solverChoice[0]) - Vars.ASCII_1 + 1, 1, True, 0.00008, mustHandle)   
+                return
+            # Input string was not correct
+            print("Invalid input - please enter a digit 1-7, inclusive.\n")
     elif (choice == Vars.COLLECT_DATA):  
         CollectDataRoutine()
         return
