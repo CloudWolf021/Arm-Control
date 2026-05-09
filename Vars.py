@@ -32,10 +32,23 @@ JSOLVEM = 6
 # Using fitted model
 MODEL = 7
 
+# In order
+METHOD_NAMES = ["Jacobian Transpose", "Jacobian Pseudoinverse", "Corrected Jacobian Pseudoinverse", "Gradient Descent", 
+                "Gradient Descent + Learning Rate Intervention", "Gradient Descent + Matrix Intervention", "Model"]
+
 # Base mode enumeration
 RUN_CONTROL = "1"
 COLLECT_DATA = "2"
 RUN_DUAL_ARMS = "3"
+TEST = "4"
+
+# Outcomes from attempting to move to point
+SUCCESS = 0
+TIMEOUT = -1
+UNREACHABLE = -2
+
+# The base results that are outputted
+TEST_PATH_RES_COUNT = 7
 
 # BEGIN Iteration constants
 

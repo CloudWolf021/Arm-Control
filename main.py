@@ -6,6 +6,7 @@ import random
 import time
 
 import Helpers
+import TestingHelper
 import Vars
 import Model
 import JacobianIterSolve
@@ -13,9 +14,9 @@ import JacobianGradSolve
 
 '''
 The main module that orchestrates the desired functionalities such as collecting data, moving an arm between points in space,
-and running a simulation where two identical arms pass a ball between each other. 
+running a simulation where two identical arms pass a ball between each other, and collecting data on the methods.
 
-Helper source https://mujoco.readthedocs.io/en/stable/python.html
+- Key helper source https://mujoco.readthedocs.io/en/stable/python.html
 '''
 
 
@@ -137,6 +138,31 @@ def MoveToLocationUnchecked(x, y, z, model, data, viewer, controlType, isLargeMa
         viewer.sync()
     print("Failed to reach point")
         
+# ###########################################################################################
+
+'''
+A high-level test routine that will run each solving method on several traces to collect data
+regarding their efficacy. Metrics such as successes, iterations, and times will be reported. 
+'''
+
+def TestRoutine():
+    TestingHelper.TestTraceAllMethods([[0.4, 0.4, 0.4]], False)
+    
+    # Test positions where x/y are -0.7, -0.35, 0, 0.35, 0.7 
+    # z is 0, 0.2, 0.4, 0.6, 0.8, 1
+    # Some of these positions are unreachable, as a test
+    # All motions are separate, and a simulation initialization is performed prior to each one
+    singleSequence = []
+    for i in range(-2, 3):
+        for j in range(-2, 3):
+            for k in range(6):
+                x = 0.35*i 
+                y = 0.35*j 
+                z = 0.2*k
+                singleSequence.append([x, y, z])
+
+    TestingHelper.TestTraceAllMethods(singleSequence, True)
+
 # ###########################################################################################
 
 '''
@@ -265,7 +291,8 @@ def ControlRoutine(controlType, numStdUpdateSteps, verbose = False, delta = 0.00
             mujoco.mj_step2(model, data)  
             viewer.sync() 
 
-            # Perform additional updates to reach the desired joint positions - the change is not instantaneous
+            # Perform additional updates to reach the desired joint positions, controlled by the input numStdUpdateSteps
+            # Always perform at least 1 step, and may need to perform additional here
             for i in range(numStdUpdateSteps-1):
                 mujoco.mj_step(model, data) 
                 viewer.sync() 
@@ -339,15 +366,16 @@ def MoveObjectRoutine():
 '''
 Main entry point which handles base input
 
-There are three options:
+There are four options:
 - A high-level control routine which prompts the user to input global positions to which the 
   robot arm end effector must move to. 
 - Data is collected for training an inverse kinematics model
 - A simulation where two robot arms move a sphere between them, taking turns, and ensuring that it
   does not move out of their reach. 
+- A testing routine for the different methods that will report information for several motion traces
 '''
 def main ():
-    print("Please enter a mode (1-3 inclusive):\n1. Run control\n2. Collect Data\n3. Move Sphere Between Arms")
+    print("Please enter a mode (1-4 inclusive):\n1. Run control\n2. Collect Data\n3. Move Sphere Between Arms\n4. Test Methods")
     choice = input()
 
     if (choice == Vars.RUN_CONTROL):
@@ -380,8 +408,10 @@ def main ():
     elif (choice == Vars.RUN_DUAL_ARMS):
         MoveObjectRoutine()
         return
+    elif (choice == Vars.TEST):
+        TestRoutine()
     else:  
-        print("Invalid option - please enter a digit 1-3, inclusive. Terminating.")
+        print("Invalid option - please enter a digit 1-4, inclusive. Terminating.")
 
 
 # Run the main entry point

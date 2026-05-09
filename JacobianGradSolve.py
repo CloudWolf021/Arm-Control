@@ -78,7 +78,7 @@ def GetSingleSolutionJacobianSpecial(jacobian, desiredXYZ, init = [0, 0, 0, 0, 0
     # Now solving adjusted*dj = rhs
     learningRate = 1.6
     cur = [init[i] for i in range(Vars.DOF)]
-    numSteps = 150
+    numSteps = 145
     for i in range(numSteps):
         curLhs = adjusted @ np.array(cur)
         # For each joint
@@ -86,7 +86,7 @@ def GetSingleSolutionJacobianSpecial(jacobian, desiredXYZ, init = [0, 0, 0, 0, 0
             totalGrad = 0
             # Sum gradient for each output
             for k in range(Vars.DOF):
-                totalGrad += 2 * (curLhs[k] - rhs[k]) * adjusted[j][k]
+                totalGrad += 2 * (curLhs[k] - rhs[k]) * adjusted[k][j]
             #print(totalGrad)
             cur[j] -= totalGrad * learningRate
     return np.array(cur)
@@ -122,6 +122,7 @@ def GetRawJointPositionListJacobianSolve(data, model, x, y, z, jacobian, handleS
     dz = z-initZ
 
     sq = dx**2+dy**2+dz**2
+
     Vars.SSQ_ERROR = sq
     deltaErr = prevSq - sq 
 

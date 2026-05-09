@@ -20,6 +20,7 @@ def AdjustMatrix(matrixIn):
         # Adjust a matrix by adding K_ADJ to each element along the main diagonal
         for i in range(len(matrixIn)):
             matrixIn[i][i] += K_ADJ
+            
     return matrixIn
 
 # ###########################################################################################
