@@ -7,6 +7,7 @@ import Helpers
 import JacobianGradSolve
 import JacobianIterSolve
 import Model
+import CallHelper
 
 '''
 A helper module for testing the different inverse kinematics solver methods.
@@ -34,21 +35,7 @@ def TestSingleCommand(data, model, controlType, x, y, z):
         mujoco.mj_jacSite(model, data, jacNeeded, jacOther, 0)
 
         # Call the appropriate method depending on what control type is desired. 
-        if (controlType == Vars.JT):
-            Helpers.MoveToJointPositionsRaw(data, JacobianIterSolve.GetRawJointPositionListJacobianT(data, model, x, y, z, jacNeeded), False)
-        elif (controlType == Vars.JPINV):
-            Helpers.MoveToJointPositionsRaw(data, JacobianIterSolve.GetRawJointPositionListJacobianPInv(data, model, x, y, z, jacNeeded), False)
-        elif (controlType == Vars.JPINVS):
-            Helpers.MoveToJointPositionsRaw(data, JacobianIterSolve.GetRawJointPositionListJacobianPInvSpecial(data, model, x, y, z, jacNeeded), False)
-        elif (controlType == Vars.JSOLVE):
-            Helpers.MoveToJointPositionsRaw(data, JacobianGradSolve.GetRawJointPositionListJacobianSolve(data, model, x, y, z, jacNeeded, False, False), False)
-        elif (controlType == Vars.JSOLVELR):
-            # Parameter for handling singularities is True
-            Helpers.MoveToJointPositionsRaw(data, JacobianGradSolve.GetRawJointPositionListJacobianSolve(data, model, x, y, z, jacNeeded, True, False), False)
-        elif (controlType == Vars.JSOLVEM):
-            # Parameter for adjusting matrix is True
-            Helpers.MoveToJointPositionsRaw(data, JacobianGradSolve.GetRawJointPositionListJacobianSolve(data, model, x, y, z, jacNeeded, False, True), False)        
-        elif (controlType == Vars.MODEL):
+        if (controlType == Vars.MODEL):
             Helpers.MoveToJointPositionsRaw(data, Model.GetRawJointPositionListModel(data, model, x, y, z), False)
             mujoco.mj_step2(model, data)  
             
@@ -58,6 +45,9 @@ def TestSingleCommand(data, model, controlType, x, y, z):
                 mujoco.mj_step(model, data)
                 iter+=1
             break
+        else:
+            CallHelper.ControlBranching(controlType, model, data, x, y, z, jacNeeded, True)
+
         mujoco.mj_step2(model, data)
 
     state = Vars.SUCCESS
@@ -182,9 +172,12 @@ def TestTraceAllMethods(path, resetBetweenSegments):
                     # Adjust -> should not have timed out
                     falseTimeout[j] += 1
 
+    # Only manageable paths are printed
+    if len(path) < 10:
+        print(f"Testing on {path}:")
     # Print information for each method
     for i in range(Vars.MODEL):
-        print(f"{Vars.METHOD_NAMES[i]}:\nTime (ms): {results[i][0]}, Iters: {results[i][1]}, " + 
+        print(f"--{Vars.METHOD_NAMES[i]}:\nTime (ms): {results[i][0]}, Iters: {results[i][1]}, " + 
               f"Successes: {results[i][2]}, Timeouts: {results[i][3]} (False: {falseTimeout[i]}), " + 
               f"Unreachable: {results[i][4]} (False: {falseUnreachable[i]}), " + 
               f"Avg. Unreachable Time: {results[i][5]}, Avg. Unreachable Iters: {results[i][6]}")

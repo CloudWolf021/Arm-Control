@@ -29,12 +29,15 @@ JSOLVE = 4
 JSOLVELR = 5
 # Special gradient descent that performs adjustments to the matrix being used (J^T*J)
 JSOLVEM = 6
+# Add a correction that modifies the gradient based on the magnitude of each joint deviation
+JSOLVEG = 7
 # Using fitted model
-MODEL = 7
+MODEL = 8
 
 # In order
 METHOD_NAMES = ["Jacobian Transpose", "Jacobian Pseudoinverse", "Corrected Jacobian Pseudoinverse", "Gradient Descent", 
-                "Gradient Descent + Learning Rate Intervention", "Gradient Descent + Matrix Intervention", "Model"]
+                "Gradient Descent + Learning Rate Intervention", "Gradient Descent + Matrix Intervention", 
+                "Gradient Descent + Gradient Intervention", "Model"]
 
 # Base mode enumeration
 RUN_CONTROL = "1"
@@ -82,7 +85,11 @@ CHECK_IMPROVEMENT_FAIL_THRESHOLD = 0.025
 
 EXPECTED_JOINT_NAME_LEN = 9
 ASCII_1 = 49
-ASCII_7 = 55
+ASCII_8 = 56
+
+# The summed squared x, y, z and coordinates of a position at which point it is almost certain that a point is unreachable. 
+# Note: many unreachable points have an ssq less than this
+HIGH_SSQ_LIM_REACHABLE = 1.1
 
 # DOF for a single arm
 DOF = 7

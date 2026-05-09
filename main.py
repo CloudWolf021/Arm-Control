@@ -11,6 +11,7 @@ import Vars
 import Model
 import JacobianIterSolve
 import JacobianGradSolve
+import CallHelper
 
 '''
 The main module that orchestrates the desired functionalities such as collecting data, moving an arm between points in space,
@@ -118,20 +119,7 @@ def MoveToLocationUnchecked(x, y, z, model, data, viewer, controlType, isLargeMa
 
         # Call the appropriate method depending on what control type is desired. 
         # The control routine using an unreliable global model is not used. 
-        if (controlType == Vars.JT):
-            Helpers.MoveToJointPositionsRaw(data, JacobianIterSolve.GetRawJointPositionListJacobianT(data, model, x, y, z, jacobian, isFirstArm), False, isFirstArm)
-        elif (controlType == Vars.JPINV):
-            Helpers.MoveToJointPositionsRaw(data, JacobianIterSolve.GetRawJointPositionListJacobianPInv(data, model, x, y, z, jacobian, isFirstArm), False, isFirstArm)
-        elif (controlType == Vars.JSOLVE):
-            Helpers.MoveToJointPositionsRaw(data, JacobianGradSolve.GetRawJointPositionListJacobianSolve(data, model, x, y, z, jacobian, False, isFirstArm), False, isFirstArm)
-        elif (controlType == Vars.JSOLVELR):
-            # Parameter for handling singularities is True
-            Helpers.MoveToJointPositionsRaw(data, JacobianGradSolve.GetRawJointPositionListJacobianSolve(data, model, x, y, z, jacobian, True, False, isFirstArm), False, isFirstArm)
-        elif (controlType == Vars.JSOLVEM):
-            # Parameter for adjusting matrix is True
-            Helpers.MoveToJointPositionsRaw(data, JacobianGradSolve.GetRawJointPositionListJacobianSolve(data, model, x, y, z, jacobian, False, True, isFirstArm), False, isFirstArm)
-        elif (controlType == Vars.JPINVS):
-            Helpers.MoveToJointPositionsRaw(data, JacobianIterSolve.GetRawJointPositionListJacobianPInvSpecial(data, model, x, y, z, jacobian, isFirstArm), False, isFirstArm)
+        CallHelper.ControlBranching(controlType, model, data, x, y, z, jacobian, isFirstArm)
         
         mujoco.mj_step2(model, data)
                 
@@ -143,25 +131,57 @@ def MoveToLocationUnchecked(x, y, z, model, data, viewer, controlType, isLargeMa
 '''
 A high-level test routine that will run each solving method on several traces to collect data
 regarding their efficacy. Metrics such as successes, iterations, and times will be reported. 
+There are 10 traces used to assess the methods. 
 '''
 
 def TestRoutine():
-    TestingHelper.TestTraceAllMethods([[0.4, 0.4, 0.4]], False)
+    trace1 = [[0.4, 0.4, 0.4]]
+    trace2 = [[0.4, 0.4, 0.4], [0.5, 0.2, 0.3], [-0.6, 0.2, 0.1]]
+    # Longer sequence of valid moves
+    trace3 = [[-0.4, 0.4, 0.4], [0.4, 0.4, 0.4], [0.4, -0.4, 0.4], [0.5, 0.1, 0.1], [0.2, 0.2, 0.6], [-0.3, 0.1, 0.8], [0.3, 0.3, 0.1]]
+    trace4 = [[1, 1, 1]]   # Invalid
     
+    # Invalid with valid
+    trace5 = [[1, 1, 1], [0.4, 0.4, 0.4]]   
+    trace6 = [[90, 90, 90], [0.4, 0.4, 0.4], [-0.5, 0.2, 0.1]]
+    trace7 = [[-90, 90, 90], [0.4, 0.2, 0.4], [0.5, 0.2, 0.1]]
+    trace8 = [[-90, -90, 90], [-0.4, -0.2, 0.4], [0.5, 0.2, 0.4]]
+    trace9 = [[-90, -90, 90], [-0.4, -0.2, 0.4], [0.5, 0.2, 0.4], [-60, -40, 90], [0.4, 0.4, 0.4]]
+    
+    trace10 = []
     # Test positions where x/y are -0.7, -0.35, 0, 0.35, 0.7 
     # z is 0, 0.2, 0.4, 0.6, 0.8, 1
     # Some of these positions are unreachable, as a test
     # All motions are separate, and a simulation initialization is performed prior to each one
-    singleSequence = []
     for i in range(-2, 3):
         for j in range(-2, 3):
             for k in range(6):
                 x = 0.35*i 
                 y = 0.35*j 
                 z = 0.2*k
-                singleSequence.append([x, y, z])
+                # Filter out some target locations that are not reachable
+                if (x**2+y**2+z**2 < Vars.HIGH_SSQ_LIM_REACHABLE):
+                    trace10.append([x, y, z])
 
-    TestingHelper.TestTraceAllMethods(singleSequence, True)
+    TestingHelper.TestTraceAllMethods(trace1, False)
+    print("\n")
+    TestingHelper.TestTraceAllMethods(trace2, False)
+    print("\n")
+    TestingHelper.TestTraceAllMethods(trace3, False)
+    print("\n")
+    TestingHelper.TestTraceAllMethods(trace4, False)
+    print("\n")
+    TestingHelper.TestTraceAllMethods(trace5, False)
+    print("\n")
+    TestingHelper.TestTraceAllMethods(trace6, False)
+    print("\n")
+    TestingHelper.TestTraceAllMethods(trace7, False)
+    print("\n")
+    TestingHelper.TestTraceAllMethods(trace8, False)
+    print("\n")
+    TestingHelper.TestTraceAllMethods(trace9, False)
+    print("\n")
+    TestingHelper.TestTraceAllMethods(trace10, True)
 
 # ###########################################################################################
 
@@ -249,22 +269,8 @@ def ControlRoutine(controlType, numStdUpdateSteps, verbose = False, delta = 0.00
             mujoco.mj_jacSite(model, data, jacNeeded, jacOther, 0)
 
             # Call the appropriate method depending on what control type is desired. 
-            if (controlType == Vars.JT):
-                Helpers.MoveToJointPositionsRaw(data, JacobianIterSolve.GetRawJointPositionListJacobianT(data, model, xN, yN, zN, jacNeeded), False)
-            elif (controlType == Vars.JPINV):
-                Helpers.MoveToJointPositionsRaw(data, JacobianIterSolve.GetRawJointPositionListJacobianPInv(data, model, xN, yN, zN, jacNeeded), False)
-            elif (controlType == Vars.JPINVS):
-                Helpers.MoveToJointPositionsRaw(data, JacobianIterSolve.GetRawJointPositionListJacobianPInvSpecial(data, model, xN, yN, zN, jacNeeded), False)
-            elif (controlType == Vars.JSOLVE):
-                Helpers.MoveToJointPositionsRaw(data, JacobianGradSolve.GetRawJointPositionListJacobianSolve(data, model, xN, yN, zN, jacNeeded, False, False), False)
-            elif (controlType == Vars.JSOLVELR):
-                # Parameter for handling singularities is True
-                Helpers.MoveToJointPositionsRaw(data, JacobianGradSolve.GetRawJointPositionListJacobianSolve(data, model, xN, yN, zN, jacNeeded, True, False), False)
-            elif (controlType == Vars.JSOLVEM):
-                # Parameter for adjusting matrix is True
-                Helpers.MoveToJointPositionsRaw(data, JacobianGradSolve.GetRawJointPositionListJacobianSolve(data, model, xN, yN, zN, jacNeeded, False, True), False)        
-            elif (controlType == Vars.MODEL):
-                Helpers.MoveToJointPositionsRaw(data, Model.GetRawJointPositionListModel(data, model, xN, yN, zN), False)
+            if (controlType == Vars.MODEL):
+                Helpers.MoveToJointPositionsRaw(data, Model.GetRawJointPositionListModel(data, model, xN, yN, zN), True)
                 
                 # Will always get the same output -> must allow the internal simulation to iterate and reach the target joint positions. 
                 for i in range(Vars.MODEL_STEP_ITERS):
@@ -286,7 +292,9 @@ def ControlRoutine(controlType, numStdUpdateSteps, verbose = False, delta = 0.00
                     print("- Solving has no notion of iterations.\n ")
                     newTime = time.perf_counter()
                     print(f"- Delta time is {1000*(newTime-startTime)} ms.")
-                continue            
+                continue   
+            else:
+                CallHelper.ControlBranching(controlType, model, data, xN, yN, zN, jacNeeded, True)         
 
             mujoco.mj_step2(model, data)  
             viewer.sync() 
@@ -381,19 +389,20 @@ def main ():
     if (choice == Vars.RUN_CONTROL):
         # Loop continuously until obtaining valid input
         while (True):
-            print("Please enter a solving method (1-7 inclusive):")
+            print("Please enter a solving method (1-8 inclusive):")
             print("1. Solve with transpose")
             print("2. Solve with raw pseudoinverse")
             print("3. Solve with safe pseudoinverse")
             print("4. Solve with gradient descent")
             print("5. Solve with gradient descent and singularity avoidance (learning rate adjustment)")
             print("6. Solve with gradient descent and singularity avoidance (matrix adjustment)")
-            print("7. Solve with model (not recommended)")
+            print("7. Solve with gradient descent and gradient adjustment")
+            print("8. Solve with model (not recommended)")
 
             solverChoice = input()
             # If empty input will short-circuit access at index 0
-            # Expecting 1, 2, 3, 4, 5, 6, or 7
-            if (len(solverChoice) == 1 and ord(solverChoice[0]) >= Vars.ASCII_1 and ord(solverChoice[0]) <= Vars.ASCII_7):
+            # Expecting 1, 2, 3, 4, 5, 6, 7, or 8
+            if (len(solverChoice) == 1 and ord(solverChoice[0]) >= Vars.ASCII_1 and ord(solverChoice[0]) <= Vars.ASCII_8):
                 # Utilize sequential order of options
                 print("Enter y to reset the arm after possible singularities and unreachable points are encountered, or any other input to not do so.")
                 handleSingularities = input()
@@ -401,7 +410,7 @@ def main ():
                 ControlRoutine(ord(solverChoice[0]) - Vars.ASCII_1 + 1, 1, True, 0.00008, mustHandle)   
                 return
             # Input string was not correct
-            print("Invalid input - please enter a digit 1-7, inclusive.\n")
+            print("Invalid input - please enter a digit 1-8, inclusive.\n")
     elif (choice == Vars.COLLECT_DATA):  
         CollectDataRoutine()
         return

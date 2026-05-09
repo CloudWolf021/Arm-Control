@@ -33,10 +33,15 @@ The optimization criteria is the squared error from the desired joint (x, y, z) 
 By using a default of all zeroes for init, we effectively resume from the previous location with 
 zero joint position changes. 
 '''
-def GetSingleSolutionJacobian(jacobian, desiredXYZ, learningRate = 0.89, init = [0, 0, 0, 0, 0, 0, 0]):
+def GetSingleSolutionJacobian(jacobian, desiredXYZ, adjustGradient, learningRate = 0.89, init = [0, 0, 0, 0, 0, 0, 0]):
     # Reference on list comprehension syntax: https://www.w3schools.com/python/python_lists_comprehension.asp
     cur = [init[i] for i in range(Vars.DOF)]
     numSteps = 60
+
+    # Apply adjustment based on the magnitude of each joint deviation. 
+    kGrad = 0
+    if adjustGradient:
+        kGrad = -0.0014
     for i in range(numSteps):
         # Current computed changes
         ffX = GetOutVal(0, jacobian, cur)
@@ -52,7 +57,9 @@ def GetSingleSolutionJacobian(jacobian, desiredXYZ, learningRate = 0.89, init = 
             curGradX = 2*errX*jacobian[0][j]
             curGradY = 2*errY*jacobian[1][j]
             curGradZ = 2*errZ*jacobian[2][j]
-            totalGrad = curGradX+curGradY+curGradZ
+            # Last term based on k*(cur[j])^2 -> can help increase gradient magnitude to overcome a singularity or
+            # stagnate less near the solution. 
+            totalGrad = curGradX+curGradY+curGradZ+2*kGrad*cur[j]
             cur[j] -= totalGrad*learningRate
     return np.array(cur)
 
@@ -106,7 +113,7 @@ duplicated here for simplicity.
 Note: this method supports standard gradient descent, gradient descent with learning rate adjustment, 
 and special gradient descent using a modified matrix.
 '''
-def GetRawJointPositionListJacobianSolve(data, model, x, y, z, jacobian, handleSingularity, adjustMatrix, isFirstArm = True):
+def GetRawJointPositionListJacobianSolve(data, model, x, y, z, jacobian, handleSingularity, adjustMatrix, adjustGradient, isFirstArm = True):
     prevSq = Vars.SSQ_ERROR
     learningRate = 0.89
     index = 0
@@ -144,9 +151,13 @@ def GetRawJointPositionListJacobianSolve(data, model, x, y, z, jacobian, handleS
     if adjustMatrix:
         res = param*GetSingleSolutionJacobianSpecial(jacobian, np.array([dx, dy, dz]))
     else:
-        # Standard
-        res = param*GetSingleSolutionJacobian(jacobian, np.array([dx, dy, dz]), learningRate)
-
+        # Standard method called
+        if adjustGradient:
+            # Gradient adjustment
+            res = param*GetSingleSolutionJacobian(jacobian, np.array([dx, dy, dz]), True, learningRate)
+        else:
+            res = param*GetSingleSolutionJacobian(jacobian, np.array([dx, dy, dz]), False, learningRate)
+        
     offset = 0
     if not(isFirstArm):
         # Correctly index into qpos
