@@ -217,39 +217,39 @@ As expected, the linear model fails to yield a valid solution. In fact, the aver
 
 For the movement to the point (0.4, 0.4, 0.4), we also visually analyze the solver trajectories. To prove correctness, we use a small sphere to designate the target position. As this is an addition only for documentation, this modification was only temporarily in place. 
 
-<video controls width = 600 src="https://cloudwolf021.github.io/Arm-Control/Graphics/transpose.mp4" title="./Graphics/dualArms.mp4"></video>
+<video controls width = 600 src="https://cloudwolf021.github.io/Arm-Control/Graphics/transpose.mp4"></video>
 
-**Figure 6.2: Inverse Kinematics with the Jacobian transpose**
-
----
-
-<video controls width = 600 src="https://cloudwolf021.github.io/Arm-Control/Graphics/pinv.mp4" title="./Graphics/dualArms.mp4"></video>
-
-**Figure 6.3: Inverse Kinematics with the Jacobian pseudoinverse**
+**Figure 6.2: Inverse Kinematics with the Jacobian transpose - [Arm](https://cloudwolf021.github.io/Arm-Control/Graphics/transpose.mp4)**
 
 ---
 
-<video controls width = 600 src="https://cloudwolf021.github.io/Arm-Control/Graphics/pinv2.mp4" title="./Graphics/dualArms.mp4"></video>
+<video controls width = 600 src="https://cloudwolf021.github.io/Arm-Control/Graphics/pinv.mp4"></video>
 
-**Figure 6.4: Inverse Kinematics with the modified Jacobian pseudoinverse**
-
----
-
-<video controls width = 600 src="https://cloudwolf021.github.io/Arm-Control/Graphics/gradientDescent.mp4" title="./Graphics/dualArms.mp4"></video>
-
-**Figure 6.5: Inverse Kinematics with Gradient Descent and the Jacobian**
+**Figure 6.3: Inverse Kinematics with the Jacobian pseudoinverse - [Arm](https://cloudwolf021.github.io/Arm-Control/Graphics/pinv.mp4)**
 
 ---
 
-<video controls width = 600 src="https://cloudwolf021.github.io/Arm-Control/Graphics/gradientDescentMatrixAdj.mp4" title="./Graphics/dualArms.mp4"></video>
+<video controls width = 600 src="https://cloudwolf021.github.io/Arm-Control/Graphics/pinv2.mp4"></video>
 
-**Figure 6.6: Inverse Kinematics with Gradient Descent and a matrix adjustment**
+**Figure 6.4: Inverse Kinematics with the modified Jacobian pseudoinverse - [Arm](https://cloudwolf021.github.io/Arm-Control/Graphics/pinv2.mp4)**
 
 ---
 
-<video controls width = 600 src="https://cloudwolf021.github.io/Arm-Control/Graphics/gradientDescentGradientAdj.mp4" title="./Graphics/dualArms.mp4"></video>
+<video controls width = 600 src="https://cloudwolf021.github.io/Arm-Control/Graphics/gradientDescent.mp4"></video>
 
-**Figure 6.7: Inverse Kinematics with Gradient Descent and a gradient adjustment**
+**Figure 6.5: Inverse Kinematics with Gradient Descent and the Jacobian - [Arm](https://cloudwolf021.github.io/Arm-Control/Graphics/gradientDescent.mp4)**
+
+---
+
+<video controls width = 600 src="https://cloudwolf021.github.io/Arm-Control/Graphics/gradientDescentMatrixAdj.mp4"></video>
+
+**Figure 6.6: Inverse Kinematics with Gradient Descent and a matrix adjustment  - [Arm](https://cloudwolf021.github.io/Arm-Control/Graphics/gradientDescentMatrixAdj.mp4)**
+
+---
+
+<video controls width = 600 src="https://cloudwolf021.github.io/Arm-Control/Graphics/gradientDescentGradientAdj.mp4"></video>
+
+**Figure 6.7: Inverse Kinematics with Gradient Descent and a gradient adjustment - [Arm](https://cloudwolf021.github.io/Arm-Control/Graphics/gradientDescentGradientAdj.mp4)**
 
 
 Using the pseudoinverse, pure gradient descent, or gradient descent with a modified gradient lead to the most direct trajectories. The gradient descent modification leads to faster convergence close to the solution, and has slightly better performance in comparison to regular gradient descent. 
@@ -312,9 +312,9 @@ Initially, the end effector of the arms was instructed to go to the center of th
 To prevent the ball from moving out of reach of the arms, a corrective motion for pushing the ball back towards the centerline was added. When the sphere has deviating significantly from the central plane ($x=0$), the arms reach a position more laterally outwards relative to the sphere, and then move inwards to apply a corrective force on the ball. In the example provided, the second arm performs successfully performs this routine.  
 
 
-<video controls width = 800 src="https://cloudwolf021.github.io/Arm-Control/Graphics/dualArms.mp4" title="./Graphics/dualArms.mp4"></video>
+<video controls width = 800 src="https://cloudwolf021.github.io/Arm-Control/Graphics/dualArms.mp4"></video>
 
-**Figure 7.2: Arms passing a sphere between each other**
+**Figure 7.2: Arms passing a sphere between each other - [Arms](https://cloudwolf021.github.io/Arm-Control/Graphics/dualArms.mp4)**
 
 This indicates that the gradient descent method works well for this application, and leads to smooth arm motions. 
 
