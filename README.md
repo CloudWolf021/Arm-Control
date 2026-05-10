@@ -152,7 +152,7 @@ We also attempted to increase the multiplier for the joint position updates inst
 
 The general equation to solve is $J*\vec{dj} = \vec{dx}$, as noted earlier. As inspired by the Levenberg-Marquardt algorithm, we can consider $J^T*J$ and perform corrections to this, as in method 5. 
 
-Let $JT$ again be $J^T$, and $M$ be $JT*J$. We transform the base equation into $M*\vec{dj} = JT*\vec{dx}$ by left-multiplying by $J^T$, and modify $(M)$ into $adj$ to ensure that it meets the determinant threshold, as is done in Method 5. This perturbation is expected to help prevent numerical instability and can help potentially escape singularities.  
+Let $JT$ again be $J^T$, and $M$ be The product of the transpose of teh Jacobian and the Jacobian. We transform the base equation by left-multiplying by $J^T$, and modify $(M)$ into $adj$ to ensure that it meets the determinant threshold, as is done in Method 5. This perturbation is expected to help prevent numerical instability and can help potentially escape singularities.  
 
 Then, we use gradient descent with a fixed number of steps to solve $adj*\vec{dj} = JT*\vec{dx}$ for $\vec{dj}$ by minimizing squared error. At each step, we compute the gradient with respect to $\vec{dj}$, and perform an update.   
 
