@@ -215,13 +215,28 @@ The raw pseudoinverse method has the best runtime and the second-lowest iteratio
 
 As expected, the linear model fails to yield a valid solution. In fact, the average error in the x, y, and z directions is approximately 0.17 (each target position is 0.4). 
 
+@@@@@@@@@@@@@
+
 <video controls width="250">
-    <source src="/Graphics/pinv.mp4" type="video/mp4" />
+    <source src="/Graphics/pinv.mp4" type="video/mp4">
 </video>
+
+@@@@@@@
+
+[![Inverse Kinematics with the Jacobian transpose](./Graphics/transpose.mp4)](./Graphics/transpose.mp4)
+
+@@@@@@@@@@
 
 ![*Alt: Inverse Kinematics with the Jacobian transpose*](Graphics/transpose.mp4)
 
 **Figure 6.2: Inverse Kinematics with the Jacobian Transpose**
+
+
+@@@@@@@@
+
+
+
+
 
 ![*Alt: Inverse Kinematics with the Jacobian pseudoinverse*](Graphics/pinv.mp4)
 
