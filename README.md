@@ -2,6 +2,8 @@
 
 ## **1 Abstract**
 
+Inverse Kinematics is essential for the control of roboti arms. 
+
 ## **2 Background and Motivation**
 
 Fundamentally, the tasks a robotic arm must complete involve the positions of the end effector in 3-dimensional space. In most applications, a set of desired end effector orientations will likely be supplied too. For simplicity, we only consider absolute end effector position, and leave orientation as an extension for future work - in particular, the methods we investigated will still hold when orientation is handled. Also, by only considering position, there is more redundancy: 7 degrees of freedom are used to reach a location given as (x, y, z). This arm is more agile and capable in comparison to arms with fewer joints, though this can come at the expense of encountering additional numerical issues. 
@@ -132,12 +134,12 @@ We consider several additional methods and interventions to help avoid handle si
 
 It is often undesirable to have matrices with small absolute determinants, and this can be associated with instability and rows or matrix columns that are close to multiples of each other, even if the rank is full. Thus, as an intervention, we adjust the matrix $J^T*J$ and manually compute the pseudoinverse instead of using numpy's linalg.pinv method. 
 
-The base algorithm used for the pseudoinverse would be $inverse(J*(J^T))*(J^T)$, based on Wikipedia. However, the determinant of $M=J*J^T$ may be close to 0, and numerical issues may occur when computing the inverse. Thus, we adjust this matrix by repeatedly adding scalar multiples of the identity matrix to it (pseudocode below). This method could be improved by determining an appropriate scalar multiple by analyzing the eigenvalues of the matrix.  
+Let $M$ be $J*J^T$ and $JT$ be $J^T$. Then, the base algorithm used for the pseudoinverse would be $M^{-1}*JT$, based on Wikipedia. However, the determinant of matrix $M$ may be close to 0, and numerical issues may occur when computing the inverse. Thus, we adjust this matrix by repeatedly adding scalar multiples of the identity matrix to it (pseudocode below). This method could be improved by determining an appropriate scalar multiple by analyzing the eigenvalues of the matrix.  
 
 **while** $abs(det(M)) < k_1$ <br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $M = M + k_2*I$
 
-Assuming this adjustment occurs $n$ times, the adjusted matrix is then $M+((k_2*n)*I)$, which is equivalent to $(J*J^T)+(k_2*n)*I$ by substitution. Thus, our corrected pseudoinverse becomes $inverse((J*J^T)+(k_2*n*I))*J^T$. This result is used in place of the standard pseudoinverse.  
+Assuming this adjustment occurs $n$ times the total update scalar is $k_2*n$. Let this be $k_3$. the adjusted matrix $A$ is then $M+k_3*I$.Finally, our corrected pseudoinverse becomes $A^{-1}*JT$. This result is used in place of the standard pseudoinverse.  
 
 
 ### **5.2 Method 6: Modified Gradient Descent: Learning Rate Adjustment**
@@ -150,9 +152,9 @@ We also attempted to increase the multiplier for the joint position updates inst
 
 The general equation to solve is $J*\vec{dj} = \vec{dx}$, as noted earlier. As inspired by the Levenberg-Marquardt algorithm, we can consider $J^T*J$ and perform corrections to this, as in method 5. 
 
-We transform $J*\vec{dj} = \vec{dx}$ into $(J^T*J)*\vec{dj} = J^T*\vec{dx}$ by left-multiplying by $J^T$, and modify $(J^T*J)$ into $adj$ to ensure that it meets the determinant threshold. This perturbation is expected to help prevent numerical instability and can help potentially escape singularities.  
+Let $JT$ again be $J^T$, and $M$ be $J^T*J$. We transform $J*\vec{dj} = \vec{dx}$ into $M*\vec{dj} = JT*\vec{dx}$ by left-multiplying by $J^T$, and modify $(M)$ into $adj$ to ensure that it meets the determinant threshold, as is done in Method 5. This perturbation is expected to help prevent numerical instability and can help potentially escape singularities.  
 
-Then, we use gradient descent with a fixed number of steps to solve $adj*\vec{dj} = J^T*\vec{dx}$ for $\vec{dj}$ by minimizing squared error. At each step, we compute the gradient with respect to $\vec{dj}$, and perform an update.   
+Then, we use gradient descent with a fixed number of steps to solve $adj*\vec{dj} = JT*\vec{dx}$ for $\vec{dj}$ by minimizing squared error. At each step, we compute the gradient with respect to $\vec{dj}$, and perform an update.   
 
 Other matrix adjustment schemes were also attempted. For example, the update rule $new = (old+k_1)*k_2$ for constants $k_1$ and $k_2$ was for main diagonal entries was used. However, when running an extensive test over 102 target positions, there were 44 false timeouts (exceeding the maximum iteration count when a position is actually reachable) as opposed to 30 false timeouts. Even though this method appeared to reduce convergence iterations in simple cases, it actually led to poorer overall performance. 
 
