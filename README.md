@@ -2,7 +2,11 @@
 
 ## **1 Abstract**
 
-Inverse Kinematics is essential for the control of roboti arms. 
+Inverse Kinematics is essential for controlling robotic arms, we explore numerous methods and several interventions. In general, a task for a robotic arm is given by a 3-dimensional location the end effector must reach. Despite being a seemingly simple problem, singularities and numerical issues are prevalent. We consider the basic approaches and several potential modifications, and assess them on different traces of requested positions. To assess robustness, we include unreachable points which can lead to robot arm positions leading to singularities during iterative solving.
+
+We find that the basic equation solving methods using the pseudoinverse and gradient descent have the highest efficacy, and that the more complex methods generally have slower runtimes or worse accuracy. Nevertheless, no method works universally, and some of the interventions are beneficial in particular cases. This indicates that maximal inverse kinematics algorithm robustness wil likely be achieved through combining multiple methods. 
+
+Finally, we consider a scenario in which two robotic arms repeatedly pass a sphere to each other, in a cooperative manner. This validated the reliability of the gradient descent inverse kinematics solving method in a practical application. 
 
 ## **2 Background and Motivation**
 
@@ -66,7 +70,7 @@ Previously, the unreachability detection algorithm simply assessed the change in
 
 #### **4.1.1.1 Iterations and Simulator Usage**
 
-In our usage of the MuJoCo simulator, on each solver iteration the simulation makes one step, which will perform a position update. As a note, this will only partially move the arm to the joint positions commanded based on the internal stepping logic of the simulator. 
+In our usage of the MuJoCo simulator, on each solver iteration the simulation makes one step, which will perform a position update. As a note, this will only partially move the arm to the joint positions commanded based on the internal stepping logic of the simulator. To increase the updates performed on each step, we can apply a scalar parameter, with a default value of 1. In the case where the transpose of the Jacobian is used, we increase the scalar as the end effector nears the target to prevent a decrease in the rate of convergence. 
 
 It is possible to allow the arm to fully move to the target positions, but this leads to less frequent updates of the Jacobian. In an application with a physical robot arm, it is likely that we would use the full joint position updates, and would be able to manually compute the Jacobian for these joint positions, independent of any robot arm or simulation.
 
@@ -76,7 +80,9 @@ This detail does not affect the primary goal of our analysis, but it important t
 
 As noted by Buss and Kim, we can use the transpose of the Jacobian to approximately solve the core equation $J*\vec{dj} = \vec{dx}$ for $\vec{dj}$, yielding $\vec{dj} = J^T*\vec{dx}$. 
 
-The transpose is a simple and numerically safe operation, but it is only an approximation of the inverse of the Jacobian. Nevertheless, it is decent efficacy, as seen in Chapter 6, since updates reduce the error in end effector position (Buss and Kim).  
+The transpose is a simple and numerically safe operation, but it is only an approximation of the inverse of the Jacobian. Nevertheless, it is decent efficacy, as seen in Chapter 6, since updates reduce the error in end effector position (Buss and Kim).
+
+One property of the transpose is that it leads to diminishing updates when a constant update multiplier is used. 
 
 
 ### **4.1.3 Method 2: Jacobian Pseudoinverse**
