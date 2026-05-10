@@ -199,7 +199,7 @@ It is important to note that for the final, most exhaustive trace, we do not man
 - **Trace 4** tests sending the arm to the unreachable position (1, 1, 1), which is not
   far removed from the range of the arm. 
 - **Traces 5-9** test sequences of mixed valid positions and unreachable positions, including ones that are very far from the arm (including (-90, -90, 90)). These positions can be filtered out, but they are used to test the robustness of the algorithms due to the potentially undesirable ending positions (based on singularities and end effector location relative to the next target point). For these traces, the arm is not reset after unreachable points. 
-- **Trace 10** is the core trace with the largest sample size. The arm is reset after each request, where x and y can be -0.7, -0.35, 0, 0.35, or 0.7, and z can be 0, 0.2, 0.4, 0.6, 0.8, or 1. Points that have a sum of their squared components exceeding 1.1 are not considered, since it is expected that they are out of bounds based on observations of position reachability. Regardless, 102 points are tested on each method, and there is a mix of reachable and unreachable points. For example, the position (0.7, 0.7, 0) is included, and it is not reachable. Overall, this is the most complete trace for testing the methods.  
+- **Trace 10** is the most extensive trace with the largest sample size. The arm is reset after each request, where x and y can be -0.7, -0.35, 0, 0.35, or 0.7, and z can be 0, 0.2, 0.4, 0.6, 0.8, or 1. Points that have a sum of their squared components exceeding 1.1 are not considered, since it is expected that they are out of bounds based on observations of position reachability. Regardless, 102 points are tested on each method, and there is a mix of reachable and unreachable points. Based on the results from the arms, there are 79 valid points, and 23 unreachable points. For example, the position (0.7, 0.7, 0) is included, and it is not reachable. 
 
  
 
@@ -215,80 +215,52 @@ The raw pseudoinverse method has the best runtime and the second-lowest iteratio
 
 As expected, the linear model fails to yield a valid solution. In fact, the average error in the x, y, and z directions is approximately 0.17 (each target position is 0.4). 
 
-@@@@@@@@@@@@@
-
-<video controls width="250">
-    <source src="/Graphics/pinv.mp4" type="video/mp4">
-</video>
-
-@@@@@@@
+For the movement to the point (0.4, 0.4, 0.4), we also visually analyze the solver trajectories. To prove correctness, we use a small sphere to designate the target position. As this is an addition only for documentation, this modification was only temporarily in place. 
 
 [![Inverse Kinematics with the Jacobian transpose](./Graphics/transpose.mp4)](./Graphics/transpose.mp4)
 
-@@@@@@@@@@
+[![Inverse Kinematics with the Jacobian pseudoinverse](./Graphics/pinv.mp4)](./Graphics/pinv.mp4)
 
-![*Alt: Inverse Kinematics with the Jacobian transpose*](Graphics/transpose.mp4)
+[![Inverse Kinematics with the modified Jacobian pseudoinverse](./Graphics/pinv2.mp4)](./Graphics/pinv2.mp4)
 
-**Figure 6.2: Inverse Kinematics with the Jacobian Transpose**
+[![Inverse Kinematics with Gradient Descent and the Jacobian](./Graphics/gradientDescent.mp4)](./Graphics/gradientDescent.mp4)
 
+[![Inverse Kinematics with Gradient Descent and a matrix adjustment](./Graphics/gradientDescentMatrixAdj.mp4)](./Graphics/gradientDescentMatrixAdj.mp4)
 
-@@@@@@@@
+[![Inverse Kinematics with Gradient Descent and a gradient adjustment](./Graphics/gradientDescentGradientAdj.mp4)](./Graphics/gradientDescentGradientAdj.mp4)
 
-
-
-
-
-![*Alt: Inverse Kinematics with the Jacobian pseudoinverse*](Graphics/pinv.mp4)
-
-**Figure 6.3: Inverse Kinematics with the Jacobian pseudoinverse**
-
-![*Alt: Inverse Kinematics with the modified Jacobian pseudoinverse*](Graphics/pinv2.mp4)
-
-**Figure 6.4: Inverse Kinematics with the modified Jacobian pseudoinverse**
-
-![*Alt: Inverse Kinematics with Gradient Descent and the Jacobian*](Graphics/gradientDescent.mp4)
-
-**Figure 6.5: Inverse Kinematics with Gradient Descent and the Jacobian**
-
-![*Alt: Inverse Kinematics with Gradient Descent and a matrix adjustment*](Graphics/gradientDescentMatrixAdj.mp4)
-
-**Figure 6.6: Inverse Kinematics with Gradient Descent and a matrix adjustment**
-
-![*Alt: Inverse Kinematics with Gradient Descent and a gradient adjustment*](Graphics/gradientDescentGradientAdj.mp4)
-
-**Figure 6.7: Inverse Kinematics with Gradient Descent and a gradient adjustment**
-
------------------
 
 Using the pseudoinverse, pure gradient descent, or gradient descent with a modified gradient lead to the most direct trajectories. The gradient descent modification leads to faster convergence close to the solution, and has slightly better performance in comparison to regular gradient descent. 
 
+-----------------------
+
 **Trace 2:** All methods except the model pass this trace with 3 chained, valid position commands. As in the previous case, the pseudoinverse is the fastest at 73 ms and 640 iterations, and the gradient descent with a modified gradient has 633 iterations but a runtime of 663 ms.
 
-------------------------
+-----------------------
 
 **Trace 3:** This longer trace of 7 reachable positions leads to the transpose and gradient descent with a modified learning rate failing on 1 position each. 
 
 ![*Alt: Trace 3 statistics*](Graphics/trace3.png)
 
-**Figure 6.8: Trace 3 statistics**
+**Figure 6.2: Trace 3 statistics**
 
 Based on this trace, it becomes clear that the raw pseudoinverse approach leads to the best performance - it reaches all positions and runs almost 10 times as fast as the second-fastest method that reaches all targets (gradient descent). Though the transpose is faster, it is clear that it is less precise as an approximator for the joint position updates. 
 
---------------------------
+-----------------------
 
 **Trace 4:** The target position (1, 1, 1) is unreachable, and trivially no methods allow the arm to reach it. However, the modified Jacobian pseudoinverse method and the transpose method detect that the point is not reachable, and report this in approximately 700 iterations. This is beneficial over a timeout since less time is used and there is a stronger prediction that the position is actually unreachable (when not considering other knowledge about reachable positions).
 
---------------------------
+-----------------------
 
 **Traces 5-9:**
 
 ![*Alt: Traces 5-9 statistics*](Graphics/traces5_9.png)
 
-**Figure 6.9: Traces 5-9 statistics**
+**Figure 6.3: Traces 5-9 statistics**
 
 It is clear that the basic pseudoinverse method continues to perform the best. Furthermore, the transpose method is clearly the most ineffective at handling singularities (excluding the model). However, the gradient descent methods with gradient correction and learning rate adjustment had 6 successes, which is better than the base gradient descent method. This indicates that in some cases, the interventions can be beneficial. Also of note is that the gradient term intervention method performed the best on trace 7, and that out of 10 reachable positions, the maximum reached was 8. This indicates that none of the methods universally work, and that some will be more successful in specific cases. 
 
--------------------------
+-----------------------
 
 **Trace 10:**
 
@@ -297,26 +269,29 @@ Finally, we consider the result of the methods on the most extensive test set.
 
 ![*Alt: Trace 10 statistics*](Graphics/trace10.png)
 
-**Figure 6.10: Trace 10 statistics**
+**Figure 6.4: Trace 10 statistics**
 
-@@@
+The collected results indicate that the raw pseudoinverse method is optimal. Over the 102 tested positions, 29 of which were classified as unreachable, is the second-fastest method with reasonable accuracy
 
-----------------
+-----------------------
 
 Thus, we conclude that the pure pseudoinverse method has the best general performance. 
 
-## **7 Application: 2 Robotic Arms Pass a Sphere Between Each Other**
+## **7 Application: Two Robotic Arms Repeatedly Pass a Sphere To Each Other**
 
-To test the inverse kinematics methods and experiment with cooperative arms, we consider a secondary setup. This utilizes two identical Franka FR3 robotic arms, and a sphere in-between them. The key task is for the two arms to properly move the sphere so that it does not move out of their reach, and for each robot to pass the ball to the other. 
+We consider a secondary setup with two identical Franka FR3 robotic arms, where the goal of each arm is to repeatedly pass a ball/sphere to the other arm. As part of this, it is important for the two arms to keep the ball in their reach. This serves as a test for the inverse kinematics method using gradient descent, and cooperative robotics experiment. 
 
-Initially, the end effector of the arms was instructed to go to the center of the sphere. This would generate excessive contact forces, and the ball would move to quickly. As a result, an offset was added so that the end effector moves near the sphere, but is not attempting to move into the sphere. 
+![*Alt: The setup with two robotic arms and a sphere*](Graphics/dualArmSetup.png)
 
-Afterwards, several iterations were needed until the ball would remain in reach of the two arms. In particular, when the sphere is deviating significantly laterally, the arms must attempt to push it back towards the plane between them (determined by $x = 0$). 
+**Figure 7.1: The setup with two robotic arms and a sphere**
 
-![*Alt: Arms passing a sphere between each other*](Graphics/dualArms.mp4)
+Initially, the end effector of the arms was instructed to go to the center of the sphere. This would generate excessive contact forces, and the ball would move to quickly. As a result, an offset was added so that the end effector does not move the sphere as harshly.
 
-**Figure 7.1: Sphere Passing Routine**
+To prevent the ball from moving out of reach of the arms, a corrective motion for pushing the ball back towards the centerline was added. When the sphere has deviating significantly from the central plane ($x=0$), the arms reach a position more laterally outwards relative to the sphere, and then move inwards to apply a corrective force on the ball. In the example provided, the second arm performs successfully performs this routine.  
 
+[![*Arms passing a sphere between each other*](./Graphics/dualArms.mp4)](./Graphics/dualArms.mp4)
+
+This indicates that the gradient descent method works well for this application, and leads to smooth arm motions. 
 
 ## **8 Future Work**
 
@@ -358,7 +333,7 @@ Thank you to Professor Chris Atkeson and Henry Liao for the project advice and c
 
 2. https://en.wikipedia.org/wiki/Levenberg%E2%80%93Marquardt_algorithm. This is an inspiration for one of the intervention methods.
 
-3. https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/video. This is useful for embedding videos in markdown using HTML elements. 
+3. https://github.com/openai/mujoco-py/issues/10. This helped determine how to adjust the camera elevation to help properly show the target. 
 
  *Note*: Other helper sources are listed throughout the code, and are not listed here since they are not directly related to the core analysis logic. 
 
