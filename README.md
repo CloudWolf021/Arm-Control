@@ -37,7 +37,7 @@ Numerous Python modules are used to separate different project components and pr
 
 ## **4 Basic Solving Methods**
 
-We note four methods - three valid, Jacobian-based solvers, and an experimental, model-based approach.
+We note four methods - three valid, Jacobian-based solvers, and an experimental approach based on 7 separate linear models. 
 
 ### **4.1 Jacobian-Based Methods**
 
@@ -45,20 +45,13 @@ The classical inverse kinematics methods appear to be generally based on using t
 
 ### **4.1.1 Using the Jacobian for Arm Movement**
 
-At each iteration, we attempt to solve $J*\vec{dj} = \vec{dx}$ for $\vec{dj}$, where $J$ is the Jacobian, $\vec{dj}$ is the vector of joint position updates, and $\vec{dx}$ is the current position error. Specifically, $\vec{dx} = \vec{target} - \vec{cur}$, where $\vec{target}$ is the desired position in 3-d space, and $\vec{cur}$ is the current end effector position. 
+The Jacobian measures the derivative of the x, y, and z components and 3 orientational angles of the end effector position with respect to each joint position. Thus, we have a link between the deviation from desired output end effector positions and viable updates in the joint positions to reduce end effector position error. The Franka FR3 arm will have a full Jacobian with dimensions $6 \times 7$, but we only use the upper $3 \times 7$ portion since we only consider end effector position.  
 
-This is equivalent to solving a linear equation that may not have any solutions or may have infinitely many solutions. 
+At each solver iteration, we attempt to solve $J*\vec{dj} = \vec{dx}$ for $\vec{dj}$, where $J$ is the current Jacobian, $\vec{dj}$ is the vector of joint position updates, and $\vec{dx}$ is the current position error. Specifically, $\vec{dx} = \vec{target} - \vec{cur}$, where $\vec{target}$ is the desired position in 3-d space, and $\vec{cur}$ is the current end effector position. Once we obtain these joint angle updates, we add them to the current joint positions to yield the new target joint positions. 
 
-The Jacobian measures the derivative of the x, y, and z with respect to each joint position, as well as the change in angles.
+If the Jacobian were an invertible, square matrix, then we would have $\vec{dj} = J^{-1}*\vec{dx}$. However, since it is not square in our case, our key task becomes finding either an approximation for $J^{-1}$ or directly finding an optimal solution to the equation. 
 
-Thus, we have a link between the deviation from desired output end effector positions and viable updates in the joint positions to reduce end effector position error. 
-
-A limitation of this project is that we must actually step the simulation to obtain the Jacobian, since we do not manually compute it. 
-
-Then, on each iteration, the problem 
-
-The core problem is .....
-Iterate...
+Multiple iterations of this procedure are needed since the Jacobian changes depending on joint positions, and the updates on each iteration occur based on a singular Jacobian. Thus, our update after each step will not precisely lead to the desired end effector position.    
 
 #### **4.1.1.1 Unreachable Position Detection**
 
@@ -69,72 +62,67 @@ At each iteration, we assess the proportional change in squared error from the p
 
 Previously, the unreachability detection algorithm simply assessed the change in error relative to a threshold, leading to poor detection due to a very low threshold, to prevent excessive false classifications. With the current algorithm, when overall error is small, a smaller error change is needed to trigger a detected failure, reducing misclassifications that occur when the arm will actually reach the target position, as desired. 
 
-#### **4.1.1.1 Iterations and Simulator Use**
+#### **4.1.1.1 Iterations and Simulator Usage**
 
+In our usage of the MuJoCo simulator, on each solver iteration the simulation makes one step, which will perform a position update. As a note, this will only partially move the arm to the joint positions commanded based on the internal stepping logic of the simulator. 
 
-@@@@@@@@@@@@@@@@@@
+It is possible to allow the arm to fully move to the target positions, but this leads to less frequent updates of the Jacobian. In an application with a physical robot arm, it is likely that we would use the full joint position updates, and would be able to manually compute the Jacobian for these joint positions, independent of any robot arm or simulation.
 
-Having multiple iterations of the simulation at each step led to higher numbers of total motion iterations needed, since computing update joint positions more times leads to less deviation in the Jacobian matrix. 
-
-4/56
-3/74
-2/110
-1/218
-
-@@ Note in extension -> this constraint comes from the framework. 
-
+This detail does not affect the primary goal of our analysis, but it important to note. 
 
 ### **4.1.2 Method 1: Jacobian Transpose**
 
-As noted by Buss and Kim (2009), 
+As noted by Buss and Kim, we can use the transpose of the Jacobian to approximately solve the core equation $J*\vec{dj} = \vec{dx}$ for $\vec{dj}$, yielding $\vec{dj} = J^T*\vec{dx}$. 
 
-@@ Write
+The transpose is a simple and numerically safe operation, but it is only an approximation of the inverse of the Jacobian. Nevertheless, it is decent efficacy, as seen in Chapter 6, since updates reduce the error in end effector position (Buss and Kim).  
+
 
 ### **4.1.3 Method 2: Jacobian Pseudoinverse**
 
-In particular, the Jacobian does not need to be square, and no true inverse likely exists. Furthermore, even if it is square, it is possible that it is non-invertible due to a nontrivial null space.
+Trivially, since the Jacobian matrix $J$ in $J*\vec{dj} = \vec{dx}$ for $\vec{dj}$ is not invertible, we can use the pseudoinverse as a better approximation than the Jacobian. Then, our approximate solution for $\vec{dj}$ is $pinv(J)*\vec{dx}$, and we can use this to update the current joint positions. We use numpy's linalg.pinv method for this.
 
-@@ Write
+One possible issue with this method is that numerical problems can be encountered while computing the Pseudoinverse, in contrast to the transpose being safe.  
 
 ### **4.1.3 Method 3: Jacobian Gradient Descent**
 
-When using pure gradient descent, 
+We can also use gradient descent to find an approximate least-squares solution to the equation $J*\vec{dj} = \vec{dx}$, minimizing <br> $||J*\vec{dj}-\vec{dx}||^2$. 
 
-@@ Write; pseudocode
+We must perform gradient descent multiple times while converging to an overall joint angle solution to reach a given end effector position. We consider the updates to the actual joint positions to be outer steps or iterations, and each step of minimizing <br> $||J*\vec{dj}-\vec{dx}||^2$ by computing the gradient and updating $\vec{dj}$ to be inner iterations or steps.
+
+Our initial guess for $\vec{dj}$ is the zero vector due to continuity. Attempting other initial updates led to poorer performance, since more complicated solutions might be found, and more singularities could be encountered. However, if we had a better, safe approximation, we could use it, as noted in Section 8.2. 
 
 #### **4.1.3.1 Fine-Tuning Gradient Descent Parameters**
 
-We consider the case of moving from the initial, default upwards arm orientation to the (x, y, z) position of (0.4, 0.4, 0.4), using a position threshold of 0.00008. As a note, our later, in-depth analysis is performed with a threshold of 0.0008 for more tolerance. 
+We consider the case of solving the inverse kinematics problem for the desired position (0.4, 0.4, 0.4), using a position threshold of 0.00008, and starting from the default joint angles. As a note, our later, in-depth analysis is performed with a threshold of 0.0008 for more tolerance, leading to differences in iteration counts. 
 
-
-
- First, we optimize the number of optimization steps for each usage of gradient descent.
-
-To minimize overall computational work, we minimize the total number of steps, which is the product of the number of outer iterations and the inner gradient descent iterations. We observe that from the sampled values, the optimal inner step count is 60, at which there are 76800 total steps. 
+ First, we optimize the number of internal steps for each usage of gradient descent by minimizing total steps (the product of the number of outer iterations and the inner gradient descent iterations). We observe that from the sampled values, the optimal inner step count is 60, at which there are 76800 total steps. 
 
 
 ![*Alt: Total Iterations as a Function of Inner Iteration Count*](Graphics/innerIterTuning.png)
 
 **Figure 4.1: Total steps as a function of inner gradient descent iterations**
 
-Using an internal step count of 60, we then optimize the learning rate by observing the total number of outer iterations needed. We then find that with a learning rate of 0.89, there are 250 steps, corresponding to an approximate minimum. This is a significant improvement in comparison to the nearly 1500 steps used when the learning rate is under 0.1. 
-
-
-@@@@@@@@@
+Using a fixed internal step count of 60, we then optimize the learning rate by observing the total number of outer iterations needed. We then find that with a learning rate of 0.89, there are 250 steps, corresponding to an approximate minimum. This is a significant improvement in comparison to the nearly 1500 steps used when the learning rate is under 0.1. 
 
 ![*Alt: Iteration Count as a Function of Learning Rate*](Graphics/learnTuning.png)
 
 **Figure 4.2: Outer gradient descent iterations as a function of learning rate**
 
-Thus, we use an internal step count of 60 and a learning rate of 0.89 for optimal inverse kinematics solution convergence. These carefully tuned parameters may explain, at least in part, the high efficacy of the pure gradient-descent based approach, as seen in Chapter 6. 
+Thus, we use an internal step count of 60 and a learning rate of 0.89 for optimal inverse kinematics solution convergence. These carefully tuned parameters may explain, at least in part, the high efficacy of the pure gradient-descent based approach, as detailed in Chapter 6. 
 
-### **4.2 Method 4: Model-Based Solving**
+### **4.2 Method 4: Inverse Kinematics with a Set of Linear Models**
 
-@@@@@@@@@@ Finish
+As an experiment, we consider a set of 7 linear models mapping 3-d coordinates to joint positions. During the data collection routine, each data point has 3 end effector coordinate components and 7 joint positions. 
 
-As an experiment, we consider a model for mapping 3-d coordinates to joint positions. 
+We then fit 7 linear models, $LM_1$ to $LM_7$, where $LM_i$ is a mapping from $x$, $y$, and $z$ to $j_i$, where $j_i$ is the $i^{th}$ joint angle. Thus, each model $LM_i$ has the form $j_i = a_i*x+b_i*y+c_i*z+d_i$, where $a_i$, $b_i$, $c_i$, and $d_i$ are constants. 
 
-This approach can be improved in the future, and this is detailed in Section 8.1. 
+To tune each linear model, we use gradient descent to minimize the sum of the squared errors between the predicted and actual joint angle for each data point. 
+
+Finally, given a desired position $(x, y, z)$, we compute the output of each linear model to obtain the target joint positions. 
+
+This approach has major limitations, since the forward mapping from joint angles to end effector positions is nonlinear, and thus the reverse mapping would not be expected to be linear. 
+
+However, there are many improvements that can be made to this approach, and this is detailed in Section 8.1. In testing this method, it is apparent that there is a broad information gain related to the inverse kinematics of the arm, and with modifications it could be significantly more effective. 
 
 ## **5 Additional Solving Methods and Interventions**
 
@@ -142,9 +130,14 @@ We consider several additional methods and interventions to help avoid handle si
 
 ### **5.1 Method 5: Modified Pseudoinverse**
 
-It is often undesirable to have matrices with small determinants. This can be associated with instability and rows or matrix columns that are close to multiples of each other, even if the rank is full. Thus, as an intervention, we adjust the matrix $J^T*J$ and manually compute the pseudoinverse instead of using numpy's linalg.pinv method. 
+It is often undesirable to have matrices with small absolute determinants, and this can be associated with instability and rows or matrix columns that are close to multiples of each other, even if the rank is full. Thus, as an intervention, we adjust the matrix $J^T*J$ and manually compute the pseudoinverse instead of using numpy's linalg.pinv method. 
 
-@@@ Expand; pseudocode
+The base algorithm used for the pseudoinverse would be $(J*J^T)^{-1}*J^T$ (Wikipedia). However, the determinant of $M=J*J^T$ may be close to 0, and numerical issues may occur when computing the inverse. Thus, we adjust this matrix by repeatedly adding scalar multiples of the identity matrix to it (pseudocode below). This method could be improved by determining an appropriate scalar multiple by analyzing the eigenvalues of the matrix.  
+
+**while** $abs(det(M)) < k1$ <br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $M = M + k2*I$
+
+Assuming this adjustment occurs $n$ times, the adjusted matrix is then $M+k2*n*I$, which is equivalent to $J*J^T+k2*n*I$ by substitution. Thus, our corrected pseudoinverse becomes $(J*J^T+k2*n*I)^{-1}*J^T$. This result is used in place of the standard pseudoinverse.  
 
 
 ### **5.2 Method 6: Modified Gradient Descent: Learning Rate Adjustment**
@@ -165,7 +158,15 @@ Other matrix adjustment schemes were also attempted. For example, the update rul
 
 ### **5.4 Method 8: Modified Gradient Descent: Gradient Adjustment**
 
-@@ Write
+To improve convergence, we can change the minimization objective by also considering the squared magnitude of the joint position update vector, $||\vec{dj}||^2$.
+
+Thus, we minimize $||J*\vec{dj}-\vec{dx}||^2 - c*||\vec{dj}||^2$ for a small positive coefficient $c$, to increase $||\vec{dj}||^2$ of the computed vector $\vec{dj}$. This leads to a slightly different gradient resulting in more aggressive, but still smooth, joint position updates. 
+
+This modification is the result of a different consideration that led to performance losses. 
+
+When controlling a redundant robotic arm, it is considered optimal to choose the joint angle solution that has the least overall deviation from the initial starting arm position. Thus, instead of simply minimizing the squared error $||J*\vec{dj}-\vec{dx}||^2$ when solving $J*\vec{dj} = \vec{dx}$, we could minimize $||J*\vec{dj}-\vec{dx}||^2 + k*||\vec{dj}||^2$ for a small, positive constant $k$. However, this approach actually led to slower convergence by reducing joint position magnitudes, instead of leading to potential exploration of other solutions. It appears that to attempt to find other solutions, different initial starting vectors for $\vec{dj}$ would be needed. 
+
+As a result, we attempted using a negative coefficient $k$ to to improve convergence by increasing joint position updates at each iteration, and found performance benefits.
 
 ### **5.5 Home Position Intervention**
 
@@ -205,7 +206,7 @@ It is important to note that for the final, most exhaustive trace, we do not man
 
 ### **6.2 Method Assessment and Results**
 
-**Trace 1:** All methods except the model pass this trace. 
+**Trace 1:** All approaches except the set of linear models pass this trace. 
 
 ![*Alt: Trace 1 statistics*](Graphics/trace1.png)
 
@@ -215,7 +216,7 @@ The raw pseudoinverse method has the best runtime and the second-lowest iteratio
 
 As expected, the linear model fails to yield a valid solution. In fact, the average error in the x, y, and z directions is approximately 0.17 (each target position is 0.4). 
 
-For the movement to the point (0.4, 0.4, 0.4), we also visually analyze the solver trajectories. To prove correctness, we use a small sphere to designate the target position. As this is an addition only for documentation, this modification was only temporarily in place. 
+For the movement to the point (0.4, 0.4, 0.4), we also visually analyze the solver trajectories. To indicate correctness, we use a small sphere to designate the target position. As this is an addition only for documentation, this modification was only temporarily in place. 
 
 <video controls width = 600 src="https://cloudwolf021.github.io/Arm-Control/Graphics/transpose.mp4"></video>
 
@@ -256,7 +257,7 @@ Using the pseudoinverse, pure gradient descent, or gradient descent with a modif
 
 -----------------------
 
-**Trace 2:** All methods except the model pass this trace with 3 chained, valid position commands. As in the previous case, the pseudoinverse is the fastest at 73 ms and 640 iterations, and the gradient descent with a modified gradient has 633 iterations but a runtime of 663 ms.
+**Trace 2:** All methods except the linear model set pass this trace with 3 valid position commands. As in the previous case, the pseudoinverse is the fastest at 73 ms and 640 iterations, and the gradient descent with a modified gradient has 633 iterations but a runtime of 663 ms.
 
 -----------------------
 
@@ -280,24 +281,31 @@ Based on this trace, it becomes clear that the raw pseudoinverse approach leads 
 
 **Figure 6.9: Traces 5-9 statistics**
 
-It is clear that the basic pseudoinverse method continues to perform the best. Furthermore, the transpose method is clearly the most ineffective at handling singularities (excluding the model). However, the gradient descent methods with gradient correction and learning rate adjustment had 6 successes, which is better than the base gradient descent method. This indicates that in some cases, the interventions can be beneficial. Also of note is that the gradient term intervention method performed the best on trace 7, and that out of 10 reachable positions, the maximum reached was 8. This indicates that none of the methods universally work, and that some will be more successful in specific cases. 
+It is clear that the basic pseudoinverse method continues to perform the best. Furthermore, the transpose method is clearly the most ineffective at handling singularities (excluding the linear model set). However, the gradient descent methods with gradient correction and learning rate adjustment had 6 successes, which is better than the base gradient descent method. This indicates that in some cases, the interventions can be beneficial. Also of note is that the gradient term intervention method performed the best on trace 7, and that out of 10 reachable positions, the maximum reached was 8. This indicates that none of the methods universally work, and that some will be more successful in specific cases. 
 
 -----------------------
 
 **Trace 10:**
 
-Finally, we consider the result of the methods on the most extensive test set. 
+Finally, we consider the results of running the different approaches on the most extensive test set. 
 
 
 ![*Alt: Trace 10 statistics*](Graphics/trace10.png)
 
 **Figure 6.10: Trace 10 statistics**
 
-The collected results indicate that the raw pseudoinverse method is optimal. Over the 102 tested positions, 29 of which were classified as unreachable, is the second-fastest method with reasonable accuracy
+The collected results indicate that the raw pseudoinverse method is optimal, with 74 out of 79 reached positions. With a runtime of 6.35 seconds, this is the second-fastest of the methods with reasonable accuracy. 
 
------------------------
+Gradient descent and gradient descent with a modified gradient are comparable, and both correctly obtained 73 of the target positions, but with runtimes over 56 seconds - almost 10 times slower than the pseudoinverse approach. 
 
-Thus, we conclude that the pure pseudoinverse method has the best general performance. 
+The adjusted pseudoinverse method and gradient descent with a modified gradient are unacceptably slow, though the adjustment algorithm can be greatly improved. However, these interventions also lead to clear correctness losses. 
+
+One shortcoming of the pseudoinverse routine is that it only detected 2 out of 23 unreachable points, with a 1.00 true positive rate, while the transpose method correctly detected 10, but with a true positive rate of only 0.67. Nevertheless, neither of these methods can be fully relied upon for determining unreachability. 
+
+The number of iterations until a point is detected as unreachable is fairly uniform across the different approaches, though the matrix-based interventions have lower iteration counts near 550. 
+
+This test also confirms the infeasibility of using a set of linear models for inverse kinematics, with only 1 observed success for this approach. 
+
 
 ## **7 Application: Two Robotic Arms Repeatedly Pass a Sphere To Each Other**
 
@@ -320,9 +328,9 @@ This indicates that the gradient descent method works well for this application,
 
 ## **8 Future Work**
 
-### **8.1 Linear Model Improvements**
+### **8.1 Linear Model Set Improvements**
 
-The current model used for inverse kinematics works very poorly (in trace 10, only 1 success for 79 different reachable positions). It only considers linear relationships, and performs multiple linear regression separately for the different joint positions. This cannot accurately learn the true kinematics of the arm, and serves as a test. In the future, a single, larger nonlinear model, or multiple local models can be made for this. Subdividing the 3-d space into segments and making models for each one should lead to a better understanding of the kinematics. As a further extension, the model could be used for obtaining an approximate set of joint positions, which are used as the starting point for gradient descent or one of the other iterative methods that were investigated. 
+The current set of linear models used for inverse kinematics in Method 4 works very poorly, as shown by 1 success over 79 different reachable positions. It only considers linear relationships, and performs multiple linear regression separately for the different joint positions. This cannot accurately learn the true kinematics of the arm, and serves as a test. In the future, we can construct a single nonlinear model (with x, y, z as inputs and 7 joint positions as outputs). Alternatively, as suggested by Professor Chris Atkeson, subdividing the 3-d space into segments and making multiple local models would be an even more ideal modification. 
 
 ### **8.2 Method Combinations**
 
@@ -343,24 +351,31 @@ Finally, filtering out unreachable positions without attempting to move to them 
 
 ## **9 Conclusion**
 
-We have found that the core inverse kinematics solving methods work relatively well in most cases. However, oscillations and poor convergence can still occur. Numerous interventions were attempted, but as a whole they appear to actually hurt performance. In certain failure cases, they are clearly beneficial, but in the most extensive trace, using pure gradient descent and an unmodified pseudoinverse led to the best performance performance in terms of correctness. However, the pseudoinverse algorithm is almost 10 times faster than gradient descent, and as a whole appears to be the best method, which is somewhat unexpected.   
+We have found that the core inverse kinematics solving methods work relatively well in most cases. However, oscillations and poor convergence can still occur. Numerous interventions were attempted, but as a whole they appear to actually hurt performance. In certain cases, such as trace 7, they are clearly beneficial, but using pure gradient descent and an unmodified pseudoinverse generally leads to the best performance performance in terms of correctness. The gradient descent approach using a modified gradient is comparable to basic gradient descent, though. The pseudoinverse algorithm is almost 10 times faster than gradient descent, and as a whole appears to be the best method. 
+
+As a whole, this confirms that the simplest method is optimal, indicating that other methods may need to be significantly more robust to outperform the pseudoinverse. 
+
+It may be also possible to use a tiered method system: if a specific position request leads to a failure when the pseudoinverse approach is used, we can attempt using a version of gradient descent. 
 
 There are many algorithmic improvements that can be made to improve the accuracy of inverse kinematics solving. A core idea will likely be combining multiple approaches and making use of trained neural networks to help with unreachability and singularity detection. This combined with the basic methods should lead to both correctness and runtime gains. 
 
 ## **10 Acknowledgements**
 
-Thank you to Professor Chris Atkeson and Henry Liao for the project advice and change towards assessing and applying different inverse kinematics methods, with a focus on singularities.
-
+Thank you to Professor Chris Atkeson and Henry Liao for the project advice and change towards assessing and applying different inverse kinematics methods.
 
 ## **11 Sources**
 
 1. Buss and Kim. https://www.cs.cmu.edu/~15464-s13/lectures/lecture6/iksurvey.pdf (2009). This paper introduction gives more context for using the Jacobian to iteratively step joint positions to converge to the target position. 
 
-2. https://en.wikipedia.org/wiki/Levenberg%E2%80%93Marquardt_algorithm. This is an inspiration for one of the intervention methods.
+2. https://en.wikipedia.org/wiki/Levenberg%E2%80%93Marquardt_algorithmas an inspiration for one of the intervention methods.
 
-3. https://github.com/openai/mujoco-py/issues/10. This helped determine how to adjust the camera elevation to help properly show the target. 
+3. https://github.com/openai/mujoco-py/issues/10 for helping determine how to adjust the camera elevation to help properly show the target. 
 
- *Note*: Other helper sources are listed throughout the code, and are not listed here since they are not directly related to the core analysis logic. 
+4. https://www.markdownguide.org/hacks/ and https://www.markdownguide.org/basic-syntax/ for syntax help.
+
+5. https://www.markdownguide.org/basic-syntax/ for syntax help.
+
+ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ***Note***: Other helper sources are listed throughout the code, and are omitted <br> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; here since they are not directly related to the core analysis and method logic. 
 
 
 
