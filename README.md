@@ -114,7 +114,7 @@ Thus, we use an internal step count of 60 and a learning rate of 0.89 for optima
 
 As an experiment, we consider a set of 7 linear models mapping 3-d coordinates to joint positions. During the data collection routine, each data point has 3 end effector coordinate components and 7 joint positions. 
 
-We then fit 7 linear models, $LM_1$ to $LM_7$, where $LM_i$ is a mapping from $x$, $y$, and $z$ to $j_i$, where $j_i$ is the $i^{th}$ joint angle. Thus, each model $LM_i$ has the form $j_i = a_i*x+b_i*y+c_i*z+d_i$, where $a_i$, $b_i$, $c_i$, and $d_i$ are constants. 
+We then fit 7 linear models, $LM_1$ to $LM_7$, where $LM_i$ is a mapping from $x$, $y$, and $z$ to $j_i$, where $j_i$ is the $i^{th}$ joint angle. Thus, each model $LM_i$ has the form $j_i = (a_i * x)+(b_i * y)+(c_i * z)+d_i$, where $a_i$, $b_i$, $c_i$, and $d_i$ are constants. 
 
 To tune each linear model, we use gradient descent to minimize the sum of the squared errors between the predicted and actual joint angle for each data point. 
 
@@ -132,12 +132,12 @@ We consider several additional methods and interventions to help avoid handle si
 
 It is often undesirable to have matrices with small absolute determinants, and this can be associated with instability and rows or matrix columns that are close to multiples of each other, even if the rank is full. Thus, as an intervention, we adjust the matrix $J^T*J$ and manually compute the pseudoinverse instead of using numpy's linalg.pinv method. 
 
-The base algorithm used for the pseudoinverse would be $(J*J^T)^{-1}*J^T$ (Wikipedia). However, the determinant of $M=J*J^T$ may be close to 0, and numerical issues may occur when computing the inverse. Thus, we adjust this matrix by repeatedly adding scalar multiples of the identity matrix to it (pseudocode below). This method could be improved by determining an appropriate scalar multiple by analyzing the eigenvalues of the matrix.  
+The base algorithm used for the pseudoinverse would be $inverse(J*J^T)*J^T$ (Wikipedia). However, the determinant of $M=J*J^T$ may be close to 0, and numerical issues may occur when computing the inverse. Thus, we adjust this matrix by repeatedly adding scalar multiples of the identity matrix to it (pseudocode below). This method could be improved by determining an appropriate scalar multiple by analyzing the eigenvalues of the matrix.  
 
 **while** $abs(det(M)) < k1$ <br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $M = M + k2*I$
 
-Assuming this adjustment occurs $n$ times, the adjusted matrix is then $M+k2*n*I$, which is equivalent to $J*J^T+k2*n*I$ by substitution. Thus, our corrected pseudoinverse becomes $(J*J^T+k2*n*I)^{-1}*J^T$. This result is used in place of the standard pseudoinverse.  
+Assuming this adjustment occurs $n$ times, the adjusted matrix is then $M+(k2*n)*I$, which is equivalent to $J*J^T+(k2*n)*I$ by substitution. Thus, our corrected pseudoinverse becomes $inverse(J*J^T+k2*n*I)*J^T$. This result is used in place of the standard pseudoinverse.  
 
 
 ### **5.2 Method 6: Modified Gradient Descent: Learning Rate Adjustment**
