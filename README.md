@@ -136,9 +136,10 @@ It is often undesirable to have matrices with small absolute determinants, and t
 
 Let $M$ be $J*J^T$ and $JT$ be $J^T$. Then, the base algorithm used for the pseudoinverse would be $M^{-1}*JT$, based on Wikipedia. However, the determinant of matrix $M$ may be close to 0, and numerical issues may occur when computing the inverse. Thus, we adjust this matrix by repeatedly adding scalar multiples of the identity matrix to it (pseudocode below). This method could be improved by determining an appropriate scalar multiple by analyzing the eigenvalues of the matrix.  
 
+**while** $abs(det(M)) < k1$ <br>
+$M = M + k2*I$
 
-
-Assuming this adjustment occurs $w$ times, the total update scalar is $k2*w$. Let this be $k3$. the adjusted matrix $A$ is then $M+k3*I$.Finally, our corrected pseudoinverse becomes $A^{-1}*JT$. This result is used in place of the standard pseudoinverse.  
+Assuming this adjustment occurs n times, the total update scalar is k2\*n. Let this be k3. The adjusted matrix A is then M+k3\*I. Finally, our corrected pseudoinverse becomes the inverse of A times JT. This result is used in place of the standard pseudoinverse.  
 
 
 ### **5.2 Method 6: Modified Gradient Descent: Learning Rate Adjustment**
@@ -151,7 +152,7 @@ We also attempted to increase the multiplier for the joint position updates inst
 
 The general equation to solve is $J*\vec{dj} = \vec{dx}$, as noted earlier. As inspired by the Levenberg-Marquardt algorithm, we can consider $J^T*J$ and perform corrections to this, as in method 5. 
 
-Let $JT$ again be $J^T$, and $M$ be $JT*J$. We transform $J*\vec{dj} = \vec{dx}$ into $M*\vec{dj} = JT*\vec{dx}$ by left-multiplying by $J^T$, and modify $(M)$ into $adj$ to ensure that it meets the determinant threshold, as is done in Method 5. This perturbation is expected to help prevent numerical instability and can help potentially escape singularities.  
+Let $JT$ again be $J^T$, and $M$ be $JT*J$. We transform the base equation into $M*\vec{dj} = JT*\vec{dx}$ by left-multiplying by $J^T$, and modify $(M)$ into $adj$ to ensure that it meets the determinant threshold, as is done in Method 5. This perturbation is expected to help prevent numerical instability and can help potentially escape singularities.  
 
 Then, we use gradient descent with a fixed number of steps to solve $adj*\vec{dj} = JT*\vec{dx}$ for $\vec{dj}$ by minimizing squared error. At each step, we compute the gradient with respect to $\vec{dj}$, and perform an update.   
 
