@@ -19,7 +19,7 @@ We use the open-source MuJoCo (Google DeepMind) environment for simulating the r
 
 We use an XML model of the Franka FR3 arm with 7 degrees of freedom, constructed by Google Menagerie using available specifications from Franka. This is a fairly generic arm with 7 degrees of freedom and position redundancy.
 
-![The Franka FR3 arm](Graphics/arm.png)
+![*Alt: The Franka FR3 arm*](Graphics/arm.png)
 
 **Figure 3.1: The Franka FR3 arm after being instructed to move to (0.4, 0.4, 0.4)**
 
@@ -113,7 +113,7 @@ We consider the case of moving from the initial, default upwards arm orientation
 To minimize overall computational work, we minimize the total number of steps, which is the product of the number of outer iterations and the inner gradient descent iterations. We observe that from the sampled values, the optimal inner step count is 60, at which there are 76800 total steps. 
 
 
-![Total Iterations as a Function of Inner Iteration Count](Graphics/innerIterTuning.png)
+![*Alt: Total Iterations as a Function of Inner Iteration Count*](Graphics/innerIterTuning.png)
 
 **Figure 4.1: Total steps as a function of inner gradient descent iterations**
 
@@ -122,7 +122,7 @@ Using an internal step count of 60, we then optimize the learning rate by observ
 
 @@@@@@@@@
 
-![Iteration Count as a Function of Learning Rate](Graphics/learnTuning.png)
+![*Alt: Iteration Count as a Function of Learning Rate*](Graphics/learnTuning.png)
 
 **Figure 4.2: Outer gradient descent iterations as a function of learning rate**
 
@@ -173,7 +173,7 @@ In the main control routine, we allow for the arm to return to a home position a
 
 As a note, this is not considered to be a specific method - instead it is is a fix applied at the end of each failed motion request.
 
-![The Franka FR3 arm in a mostly neutral position](Graphics/armUp.png)
+![*Alt: The Franka FR3 arm in a mostly neutral position*](Graphics/armUp.png)
 
 **Figure 5.1: The Franka FR3 arm in a mostly neutral position**
 
@@ -207,7 +207,7 @@ It is important to note that for the final, most exhaustive trace, we do not man
 
 **Trace 1:** All methods except the model pass this trace. 
 
-![Trace 1 statistics](Graphics/trace1.png)
+![*Alt: Trace 1 statistics*](Graphics/trace1.png)
 
 **Figure 6.1: Trace 1 statistics**
 
@@ -215,46 +215,72 @@ The raw pseudoinverse method has the best runtime and the second-lowest iteratio
 
 As expected, the linear model fails to yield a valid solution. In fact, the average error in the x, y, and z directions is approximately 0.17 (each target position is 0.4). 
 
-![Inverse Kinematics using the Jacobian transpose](Graphics/transpose.mp4)
-![Inverse Kinematics using the Jacobian pseudoinverse](Graphics/pinv.mp4)
-![Inverse Kinematics using the modified Jacobian pseudoinverse](Graphics/pinv2.mp4)
-![Inverse Kinematics using Gradient Descent and the Jacobian](Graphics/gradientDescent.mp4)
-![Inverse Kinematics using Gradient Descent with a matrix adjustment](Graphics/gradientDescentMatrixAdj.mp4)
-![Inverse Kinematics using Gradient Descent with a gradient adjustment](Graphics/gradientDescentGradientAdj.mp4)
+<video controls width="250">
+    <source src="/Graphics/pinv.mp4" type="video/mp4" />
+</video>
 
-**Figures 6.2-6.7: Inverse Kinematics using the Jacobian Transpose, Jacobian Pseudoinverse, modified Jacobian Pseudoinverse, Gradient Descent, Gradient Descent with a matrix adjustment, and Gradient Descent with a gradient adjustment. Figures are in order from left-right and top-bottom. **
+![*Alt: Inverse Kinematics with the Jacobian transpose*](Graphics/transpose.mp4)
 
+**Figure 6.2: Inverse Kinematics with the Jacobian Transpose**
 
+![*Alt: Inverse Kinematics with the Jacobian pseudoinverse*](Graphics/pinv.mp4)
 
+**Figure 6.3: Inverse Kinematics with the Jacobian pseudoinverse**
 
+![*Alt: Inverse Kinematics with the modified Jacobian pseudoinverse*](Graphics/pinv2.mp4)
 
+**Figure 6.4: Inverse Kinematics with the modified Jacobian pseudoinverse**
+
+![*Alt: Inverse Kinematics with Gradient Descent and the Jacobian*](Graphics/gradientDescent.mp4)
+
+**Figure 6.5: Inverse Kinematics with Gradient Descent and the Jacobian**
+
+![*Alt: Inverse Kinematics with Gradient Descent and a matrix adjustment*](Graphics/gradientDescentMatrixAdj.mp4)
+
+**Figure 6.6: Inverse Kinematics with Gradient Descent and a matrix adjustment**
+
+![*Alt: Inverse Kinematics with Gradient Descent and a gradient adjustment*](Graphics/gradientDescentGradientAdj.mp4)
+
+**Figure 6.7: Inverse Kinematics with Gradient Descent and a gradient adjustment**
+
+-----------------
+
+Using the pseudoinverse, pure gradient descent, or gradient descent with a modified gradient lead to the most direct trajectories. The gradient descent modification leads to faster convergence close to the solution, and has slightly better performance in comparison to regular gradient descent. 
 
 **Trace 2:** All methods except the model pass this trace with 3 chained, valid position commands. As in the previous case, the pseudoinverse is the fastest at 73 ms and 640 iterations, and the gradient descent with a modified gradient has 633 iterations but a runtime of 663 ms.
 
+------------------------
+
 **Trace 3:** This longer trace of 7 reachable positions leads to the transpose and gradient descent with a modified learning rate failing on 1 position each. 
 
-![Trace 3 statistics](Graphics/trace3.png)
+![*Alt: Trace 3 statistics*](Graphics/trace3.png)
 
 **Figure 6.8: Trace 3 statistics**
 
 Based on this trace, it becomes clear that the raw pseudoinverse approach leads to the best performance - it reaches all positions and runs almost 10 times as fast as the second-fastest method that reaches all targets (gradient descent). Though the transpose is faster, it is clear that it is less precise as an approximator for the joint position updates. 
 
+--------------------------
+
 **Trace 4:** The target position (1, 1, 1) is unreachable, and trivially no methods allow the arm to reach it. However, the modified Jacobian pseudoinverse method and the transpose method detect that the point is not reachable, and report this in approximately 700 iterations. This is beneficial over a timeout since less time is used and there is a stronger prediction that the position is actually unreachable (when not considering other knowledge about reachable positions).
+
+--------------------------
 
 **Traces 5-9:**
 
-![Traces 5-9 statistics](Graphics/traces5_9.png)
+![*Alt: Traces 5-9 statistics*](Graphics/traces5_9.png)
 
 **Figure 6.9: Traces 5-9 statistics**
 
 It is clear that the basic pseudoinverse method continues to perform the best. Furthermore, the transpose method is clearly the most ineffective at handling singularities (excluding the model). However, the gradient descent methods with gradient correction and learning rate adjustment had 6 successes, which is better than the base gradient descent method. This indicates that in some cases, the interventions can be beneficial. Also of note is that the gradient term intervention method performed the best on trace 7, and that out of 10 reachable positions, the maximum reached was 8. This indicates that none of the methods universally work, and that some will be more successful in specific cases. 
+
+-------------------------
 
 **Trace 10:**
 
 Finally, we consider the result of the methods on the most extensive test set. 
 
 
-![Trace 10 statistics](Graphics/trace10.png)
+![*Alt: Trace 10 statistics*](Graphics/trace10.png)
 
 **Figure 6.10: Trace 10 statistics**
 
@@ -272,7 +298,7 @@ Initially, the end effector of the arms was instructed to go to the center of th
 
 Afterwards, several iterations were needed until the ball would remain in reach of the two arms. In particular, when the sphere is deviating significantly laterally, the arms must attempt to push it back towards the plane between them (determined by $x = 0$). 
 
-![Arms passing a sphere between each other](Graphics/dualArms.mp4)
+![*Alt: Arms passing a sphere between each other*](Graphics/dualArms.mp4)
 
 **Figure 7.1: Sphere Passing Routine**
 
@@ -316,6 +342,8 @@ Thank you to Professor Chris Atkeson and Henry Liao for the project advice and c
 1. Buss and Kim. https://www.cs.cmu.edu/~15464-s13/lectures/lecture6/iksurvey.pdf (2009). This paper introduction gives more context for using the Jacobian to iteratively step joint positions to converge to the target position. 
 
 2. https://en.wikipedia.org/wiki/Levenberg%E2%80%93Marquardt_algorithm. This is an inspiration for one of the intervention methods.
+
+3. https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/video. This is useful for embedding videos in markdown using HTML elements. 
 
  *Note*: Other helper sources are listed throughout the code, and are not listed here since they are not directly related to the core analysis logic. 
 
