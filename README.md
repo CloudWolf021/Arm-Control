@@ -217,17 +217,39 @@ As expected, the linear model fails to yield a valid solution. In fact, the aver
 
 For the movement to the point (0.4, 0.4, 0.4), we also visually analyze the solver trajectories. To prove correctness, we use a small sphere to designate the target position. As this is an addition only for documentation, this modification was only temporarily in place. 
 
-[![Inverse Kinematics with the Jacobian transpose](./Graphics/transpose.mp4)](./Graphics/transpose.mp4)
+<video controls width = 600 src="https://cloudwolf021.github.io/Arm-Control/Graphics/transpose.mp4" title="./Graphics/dualArms.mp4"></video>
 
-[![Inverse Kinematics with the Jacobian pseudoinverse](./Graphics/pinv.mp4)](./Graphics/pinv.mp4)
+**Figure 6.2: Inverse Kinematics with the Jacobian transpose**
 
-[![Inverse Kinematics with the modified Jacobian pseudoinverse](./Graphics/pinv2.mp4)](./Graphics/pinv2.mp4)
+---
 
-[![Inverse Kinematics with Gradient Descent and the Jacobian](./Graphics/gradientDescent.mp4)](./Graphics/gradientDescent.mp4)
+<video controls width = 600 src="https://cloudwolf021.github.io/Arm-Control/Graphics/pinv.mp4" title="./Graphics/dualArms.mp4"></video>
 
-[![Inverse Kinematics with Gradient Descent and a matrix adjustment](./Graphics/gradientDescentMatrixAdj.mp4)](./Graphics/gradientDescentMatrixAdj.mp4)
+**Figure 6.3: Inverse Kinematics with the Jacobian pseudoinverse**
 
-[![Inverse Kinematics with Gradient Descent and a gradient adjustment](./Graphics/gradientDescentGradientAdj.mp4)](./Graphics/gradientDescentGradientAdj.mp4)
+---
+
+<video controls width = 600 src="https://cloudwolf021.github.io/Arm-Control/Graphics/pinv2.mp4" title="./Graphics/dualArms.mp4"></video>
+
+**Figure 6.4: Inverse Kinematics with the modified Jacobian pseudoinverse**
+
+---
+
+<video controls width = 600 src="https://cloudwolf021.github.io/Arm-Control/Graphics/gradientDescent.mp4" title="./Graphics/dualArms.mp4"></video>
+
+**Figure 6.5: Inverse Kinematics with Gradient Descent and the Jacobian**
+
+---
+
+<video controls width = 600 src="https://cloudwolf021.github.io/Arm-Control/Graphics/gradientDescentMatrixAdj.mp4" title="./Graphics/dualArms.mp4"></video>
+
+**Figure 6.6: Inverse Kinematics with Gradient Descent and a matrix adjustment**
+
+---
+
+<video controls width = 600 src="https://cloudwolf021.github.io/Arm-Control/Graphics/gradientDescentGradientAdj.mp4" title="./Graphics/dualArms.mp4"></video>
+
+**Figure 6.7: Inverse Kinematics with Gradient Descent and a gradient adjustment**
 
 
 Using the pseudoinverse, pure gradient descent, or gradient descent with a modified gradient lead to the most direct trajectories. The gradient descent modification leads to faster convergence close to the solution, and has slightly better performance in comparison to regular gradient descent. 
@@ -242,7 +264,7 @@ Using the pseudoinverse, pure gradient descent, or gradient descent with a modif
 
 ![*Alt: Trace 3 statistics*](Graphics/trace3.png)
 
-**Figure 6.2: Trace 3 statistics**
+**Figure 6.8: Trace 3 statistics**
 
 Based on this trace, it becomes clear that the raw pseudoinverse approach leads to the best performance - it reaches all positions and runs almost 10 times as fast as the second-fastest method that reaches all targets (gradient descent). Though the transpose is faster, it is clear that it is less precise as an approximator for the joint position updates. 
 
@@ -256,7 +278,7 @@ Based on this trace, it becomes clear that the raw pseudoinverse approach leads 
 
 ![*Alt: Traces 5-9 statistics*](Graphics/traces5_9.png)
 
-**Figure 6.3: Traces 5-9 statistics**
+**Figure 6.9: Traces 5-9 statistics**
 
 It is clear that the basic pseudoinverse method continues to perform the best. Furthermore, the transpose method is clearly the most ineffective at handling singularities (excluding the model). However, the gradient descent methods with gradient correction and learning rate adjustment had 6 successes, which is better than the base gradient descent method. This indicates that in some cases, the interventions can be beneficial. Also of note is that the gradient term intervention method performed the best on trace 7, and that out of 10 reachable positions, the maximum reached was 8. This indicates that none of the methods universally work, and that some will be more successful in specific cases. 
 
@@ -269,7 +291,7 @@ Finally, we consider the result of the methods on the most extensive test set.
 
 ![*Alt: Trace 10 statistics*](Graphics/trace10.png)
 
-**Figure 6.4: Trace 10 statistics**
+**Figure 6.10: Trace 10 statistics**
 
 The collected results indicate that the raw pseudoinverse method is optimal. Over the 102 tested positions, 29 of which were classified as unreachable, is the second-fastest method with reasonable accuracy
 
@@ -289,7 +311,10 @@ Initially, the end effector of the arms was instructed to go to the center of th
 
 To prevent the ball from moving out of reach of the arms, a corrective motion for pushing the ball back towards the centerline was added. When the sphere has deviating significantly from the central plane ($x=0$), the arms reach a position more laterally outwards relative to the sphere, and then move inwards to apply a corrective force on the ball. In the example provided, the second arm performs successfully performs this routine.  
 
-[![*Arms passing a sphere between each other*](./Graphics/dualArms.mp4)](./Graphics/dualArms.mp4)
+
+<video controls width = 800 src="https://cloudwolf021.github.io/Arm-Control/Graphics/dualArms.mp4" title="./Graphics/dualArms.mp4"></video>
+
+**Figure 7.2: Arms passing a sphere between each other**
 
 This indicates that the gradient descent method works well for this application, and leads to smooth arm motions. 
 
