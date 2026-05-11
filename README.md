@@ -138,7 +138,7 @@ It is often undesirable to have matrices with small absolute determinants, and t
 Let $M$ be $J*J^T$ and $JT$ be $J^T$. Then, the base algorithm used for the pseudoinverse would be $M^{-1}*JT$, based on Wikipedia. However, the determinant of matrix $M$ may be close to 0, and numerical issues may occur when computing the inverse. Thus, we adjust this matrix by repeatedly adding scalar multiples of the identity matrix to it (pseudocode below). This method could be improved by determining an appropriate scalar multiple by analyzing the eigenvalues of the matrix.  
 
 **while** $abs(det(M)) < k1$ <br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;$M = M + k2*I$
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;M = M + k2*I
 
 Assuming this adjustment occurs n times, the total update scalar is k2\*n. Let this be k3. The adjusted matrix A is then M+k3\*I. Finally, our corrected pseudoinverse becomes the inverse of A times JT. This result is used in place of the standard pseudoinverse.  
 
