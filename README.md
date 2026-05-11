@@ -220,37 +220,37 @@ For this movement, we also visually analyze the solver trajectories. To indicate
 
 <video controls width = 600 src="https://cloudwolf021.github.io/Arm-Control/Graphics/transpose.mp4"></video>
 
-**Figure 6.2: Inverse Kinematics with the Jacobian transpose - [Arm](https://cloudwolf021.github.io/Arm-Control/Graphics/transpose.mp4)**
+**Figure 6.2: Inverse Kinematics with the Jacobian transpose - [Arm Video](https://cloudwolf021.github.io/Arm-Control/Graphics/transpose.mp4)**
 
 ---
 
 <video controls width = 600 src="https://cloudwolf021.github.io/Arm-Control/Graphics/pinv.mp4"></video>
 
-**Figure 6.3: Inverse Kinematics with the Jacobian Pseudoinverse - [Arm](https://cloudwolf021.github.io/Arm-Control/Graphics/pinv.mp4)**
+**Figure 6.3: Inverse Kinematics with the Jacobian Pseudoinverse - [Arm Video](https://cloudwolf021.github.io/Arm-Control/Graphics/pinv.mp4)**
 
 ---
 
 <video controls width = 600 src="https://cloudwolf021.github.io/Arm-Control/Graphics/pinv2.mp4"></video>
 
-**Figure 6.4: Inverse Kinematics with the modified Jacobian Pseudoinverse - [Arm](https://cloudwolf021.github.io/Arm-Control/Graphics/pinv2.mp4)**
+**Figure 6.4: Inverse Kinematics with the modified Jacobian Pseudoinverse - [Arm Video](https://cloudwolf021.github.io/Arm-Control/Graphics/pinv2.mp4)**
 
 ---
 
 <video controls width = 600 src="https://cloudwolf021.github.io/Arm-Control/Graphics/gradientDescent.mp4"></video>
 
-**Figure 6.5: Inverse Kinematics with Gradient Descent and the Jacobian - [Arm](https://cloudwolf021.github.io/Arm-Control/Graphics/gradientDescent.mp4)**
+**Figure 6.5: Inverse Kinematics with Gradient Descent and the Jacobian - [Arm Video](https://cloudwolf021.github.io/Arm-Control/Graphics/gradientDescent.mp4)**
 
 ---
 
 <video controls width = 600 src="https://cloudwolf021.github.io/Arm-Control/Graphics/gradientDescentMatrixAdj.mp4"></video>
 
-**Figure 6.6: Inverse Kinematics with Gradient Descent and a Matrix Adjustment  - [Arm](https://cloudwolf021.github.io/Arm-Control/Graphics/gradientDescentMatrixAdj.mp4)**
+**Figure 6.6: Inverse Kinematics with Gradient Descent and a Matrix Adjustment  - [Arm Video](https://cloudwolf021.github.io/Arm-Control/Graphics/gradientDescentMatrixAdj.mp4)**
 
 ---
 
 <video controls width = 600 src="https://cloudwolf021.github.io/Arm-Control/Graphics/gradientDescentGradientAdj.mp4"></video>
 
-**Figure 6.7: Inverse Kinematics with Gradient Descent and a Gradient Adjustment - [Arm](https://cloudwolf021.github.io/Arm-Control/Graphics/gradientDescentGradientAdj.mp4)**
+**Figure 6.7: Inverse Kinematics with Gradient Descent and a Gradient Adjustment - [Arm Video](https://cloudwolf021.github.io/Arm-Control/Graphics/gradientDescentGradientAdj.mp4)**
 
 
 Using the pseudoinverse, pure gradient descent, or gradient descent with a modified gradient leads to the most direct trajectories. The gradient descent modification leads to faster convergence close to the solution, and has slightly better performance in comparison to regular gradient descent. 
@@ -317,7 +317,7 @@ To prevent the ball from moving out of reach of the arms, a corrective motion fo
 
 <video controls width = 800 src="https://cloudwolf021.github.io/Arm-Control/Graphics/dualArms.mp4"></video>
 
-**Figure 7.2: Arms passing a sphere between each other - [Arms](https://cloudwolf021.github.io/Arm-Control/Graphics/dualArms.mp4)**
+**Figure 7.2: Arms passing a sphere between each other - [Dual Arms Video](https://cloudwolf021.github.io/Arm-Control/Graphics/dualArms.mp4)**
 
 This indicates that the gradient descent method works well for this application, and leads to smooth arm motions. 
 
